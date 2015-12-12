@@ -8,8 +8,14 @@
 <body>
 <canvas width="800" height="800"></canvas>
 <script>
+// Mimicking Hand-Drawn Pencil Lines
+// http://webhome.cs.uvic.ca/~blob/publications/cae08.pdf
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
+var rand = Math.random;
+var pow = Math.pow;
+var sqrt = Math.sqrt;
+
 var body = document.body;
 var canvas = body.$("canvas");
 var ctx = canvas.getContext("2d");
@@ -17,38 +23,60 @@ var W = canvas.width;
 var H = canvas.height;
 var DH = 30;
 var DW = 30;
-var rand = Math.random;
 var peaks = [];
 for (var j = H; j > 0; j -= DH) {
     for (var i = W; i > 0; i -= DW) {
-		var y = j - rand() * DH;
-		var x = i - rand() * DW;
-		peaks.push([x,y]);
+		peaks.push({x: i - rand() * DW, y: j - rand() * DH});
 	}
 }
+peaks = peaks.sort(function (a,b) { return a.y - b.y });
 
-peaks = peaks.sort(function (a,b) { return a[1] - b[1] });
 
-ctx.lineWidth = 2;
-
+// Draw the mountains
+ctx.beginPath();
 [].forEach.call(peaks, function (p) {
-	var x = p[0];
-	var y = p[1];
-	ctx.beginPath();
-	ctx.moveTo(x - DW, y + DH);
-	ctx.lineTo(x, y);
-	ctx.lineTo(x + DW, y + DH);
-	ctx.stroke();
-	ctx.fillStyle = "white";
-	ctx.fill();
-
-	ctx.beginPath();
-	ctx.moveTo(x - DW, y + DH);
-	ctx.lineTo(x, y);
-	ctx.lineTo(x - DW * 0.1, y + DH);
-	ctx.fillStyle = "black";
-	ctx.fill();
+	doSpline(handDrawnLine(add(p, {x:-DW, y:DH}), p));
+	doSpline(handDrawnLine(p, add(p, {x: DW, y:DH})));
 });
+ctx.lineWidth = 2;
+ctx.stroke();
+
+function normalize(p)   { return scale(p, 1 / magnitude(p)) }
+function magnitude(p)   { return sqrt(p.x * p.x + p.y * p.y) }
+function subtract(p, q) { return {x: p.x - q.x, y: p.y - q.y} }
+function add(p, q)      { return {x: p.x + q.x, y: p.y + q.y} }
+function scale(p, s)    { return {x: p.x * s,   y: p.y * s} }
+function copy(p)        { return {x: p.x, y: p.y} }
+function average(p, q)  { return scale(add(p,q), 1/2) }
+
+
+function handDrawnLine(p0, p1) {
+	var diff = subtract(p0, p1);
+	var dist = magnitude(diff);
+	var nsegments = (dist < 200) ? 4 : (dist < 400) ? 7 : 10;
+	var normal = normalize({x:p0.y-p1.y, y:p1.x-p0.x});
+	var result = [copy(p0)];
+	for (var i = 1; i < nsegments; ++i) {
+		var t = i / nsegments;
+		var h = 16 * pow(t, 4) - 6 * pow(t, 5) - 10 * pow(t, 3);
+		pt = add(p0, scale(diff, h));
+		result.push(add(pt, scale(normal, (rand() - 0.5) * 5)));
+	}
+	result.push(copy(p1));
+	return result;
+}
+
+function moveTo(p) { ctx.moveTo(p.x, p.y) }
+function curveTo(ctl, end) { ctx.quadraticCurveTo(ctl.x, ctl.y, end.x, end.y) }
+function doSpline(ps) {
+	// http://stackoverflow.com/questions/7054272/how-to-draw-smooth-curve-through-n-points-using-javascript-html5-canvas
+	moveTo(ps[0]);
+	for (var i = 1; i < ps.length - 2; ++i) {
+		curveTo(ps[i], average(ps[i], ps[i+1]));
+	}
+	curveTo(ps[ps.length - 2], ps[ps.length - 1]);
+}
+
 </script>
 </body>
 </html>
