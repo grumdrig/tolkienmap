@@ -34,13 +34,22 @@ peaks = peaks.sort(function (a,b) { return a.y - b.y });
 
 // Draw the mountains
 ctx.lineWidth = 2;
-ctx.fillStyle = "#fff";
 [].forEach.call(peaks, function (p) {
 	ctx.beginPath();
-	doSpline(handDrawnLine(add(p, {x:-DW, y:DH}), p));
-	doSpline(handDrawnLine(p, add(p, {x: DW, y:DH})), true);
+	var westSlope = handDrawnLine(add(p, {x:-DW, y:DH}), p);
+	var eastSlope = handDrawnLine(p, add(p, {x: DW, y:DH}));
+	doSpline(westSlope.concat(eastSlope));
+	ctx.fillStyle = "#fff";
 	ctx.fill();
 	ctx.stroke();
+
+	var shadowLine = handDrawnLine(p, add(p, {x: -.5*DW, y:1*DH}));
+	ctx.beginPath();
+	doSpline(westSlope.concat(shadowLine));
+	// for (var i = 1; i < westSlope.length; ++i)
+	// 	doSpline(handDrawnLine(westSlope[i], eastSlope[i]));
+	ctx.fillStyle = "#000";
+	ctx.fill();
 });
 
 function normalize(p)   { return scale(p, 1 / magnitude(p)) }
