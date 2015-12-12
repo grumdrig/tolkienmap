@@ -33,13 +33,15 @@ peaks = peaks.sort(function (a,b) { return a.y - b.y });
 
 
 // Draw the mountains
-ctx.beginPath();
-[].forEach.call(peaks, function (p) {
-	doSpline(handDrawnLine(add(p, {x:-DW, y:DH}), p));
-	doSpline(handDrawnLine(p, add(p, {x: DW, y:DH})));
-});
 ctx.lineWidth = 2;
-ctx.stroke();
+ctx.fillStyle = "#fff";
+[].forEach.call(peaks, function (p) {
+	ctx.beginPath();
+	doSpline(handDrawnLine(add(p, {x:-DW, y:DH}), p));
+	doSpline(handDrawnLine(p, add(p, {x: DW, y:DH})), true);
+	ctx.fill();
+	ctx.stroke();
+});
 
 function normalize(p)   { return scale(p, 1 / magnitude(p)) }
 function magnitude(p)   { return sqrt(p.x * p.x + p.y * p.y) }
@@ -68,9 +70,9 @@ function handDrawnLine(p0, p1) {
 
 function moveTo(p) { ctx.moveTo(p.x, p.y) }
 function curveTo(ctl, end) { ctx.quadraticCurveTo(ctl.x, ctl.y, end.x, end.y) }
-function doSpline(ps) {
+function doSpline(ps, cont) {
 	// http://stackoverflow.com/questions/7054272/how-to-draw-smooth-curve-through-n-points-using-javascript-html5-canvas
-	moveTo(ps[0]);
+	if (!cont) moveTo(ps[0]);
 	for (var i = 1; i < ps.length - 2; ++i) {
 		curveTo(ps[i], average(ps[i], ps[i+1]));
 	}
