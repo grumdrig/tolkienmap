@@ -68,8 +68,23 @@ CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h) {
 	// for (var i = 1; i < westSlope.length; ++i)
 	// 	doSpline(handDrawnLine(westSlope[i], eastSlope[i]));
 	this.fillStyle = "#000";
-	this.fill();
+	this.save();
+	// this.fill();
+	this.clip();
+	this.crosshatchRect(p.x - w/2, p.y, w, h);
+	this.restore();
 }
+
+CanvasRenderingContext2D.prototype.crosshatchRect = function (x, y, w, h) {
+	// really covers more than the rect, but we'll be clipping it anyway
+	this.beginPath();
+	var rise = w / 2;
+	for (var j = 0; j < h + rise; j += 3) {
+		this.doSpline(handDrawnLine({x:x, y:y+j}, {x:x+w, y:y+j-rise}, 2));
+	}
+	this.stroke();
+}
+
 
 function bigOneInMiddle(ctx) {
 	var c = scale({x:W, y:H}, 1/2);
@@ -97,7 +112,8 @@ function copy(p)        { return {x: p.x, y: p.y} }
 function average(p, q)  { return scale(add(p,q), 1/2) }
 
 
-function handDrawnLine(p0, p1) {
+function handDrawnLine(p0, p1, eccentricity) {
+	eccentricity = eccentricity || 5;
 	var diff = subtract(p0, p1);
 	var dist = magnitude(diff);
 	var nsegments = (dist < 200) ? 4 : (dist < 400) ? 7 : 10;
@@ -107,7 +123,7 @@ function handDrawnLine(p0, p1) {
 		var t = i / nsegments;
 		var h = 16 * pow(t, 4) - 6 * pow(t, 5) - 10 * pow(t, 3);
 		pt = add(p0, scale(diff, h));
-		result.push(add(pt, scale(normal, crand(5))));
+		result.push(add(pt, scale(normal, crand(eccentricity))));
 	}
 	result.push(copy(p1));
 	return result;
