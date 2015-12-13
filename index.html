@@ -3,13 +3,21 @@
 <head>
 <title>Mountain Map</title>
 <style>
+html, body {
+	margin: 0;
+	/*overflow: hidden;*/
+}
+canvas { border: solid 1px red }
 </style>
 </head>
 <body>
-<canvas width="800" height="800"></canvas>
+<canvas id="map"></canvas>
+<canvas id="worker"></canvas>
 <script>
 // Mimicking Hand-Drawn Pencil Lines
 // http://webhome.cs.uvic.ca/~blob/publications/cae08.pdf
+// Middle Earth!
+// http://www.donsmaps.com/images29/middleearthlargelargerstill.jpg
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
 var rand = Math.random;
@@ -17,40 +25,65 @@ var pow = Math.pow;
 var sqrt = Math.sqrt;
 
 var body = document.body;
-var canvas = body.$("canvas");
-var ctx = canvas.getContext("2d");
-var W = canvas.width;
-var H = canvas.height;
+var canvas = body.$("canvas#map");
+// var ctx = ;
+
+var W = canvas.width  = window.innerWidth;
+var H = canvas.height = window.innerHeight;
+
 var DH = 30;
 var DW = 30;
-var peaks = [];
-for (var j = H; j > 0; j -= DH) {
-    for (var i = W; i > 0; i -= DW) {
-		peaks.push({x: i - rand() * DW, y: j - rand() * DH});
-	}
-}
-peaks = peaks.sort(function (a,b) { return a.y - b.y });
-
 
 // Draw the mountains
-ctx.lineWidth = 2;
-[].forEach.call(peaks, function (p) {
-	ctx.beginPath();
-	var westSlope = handDrawnLine(add(p, {x:-DW, y:DH}), p);
-	var eastSlope = handDrawnLine(p, add(p, {x: DW, y:DH}));
-	doSpline(westSlope.concat(eastSlope));
-	ctx.fillStyle = "#fff";
-	ctx.fill();
-	ctx.stroke();
+function fieldOfMountains(ctx) {
+	var peaks = [];
+	for (var j = H; j > 0; j -= DH) {
+	    for (var i = W; i > 0; i -= DW) {
+			peaks.push({x: i - rand() * DW, y: j - rand() * DH});
+		}
+	}
+	peaks = peaks.sort(function (a,b) { return a.y - b.y });
 
-	var shadowLine = handDrawnLine(p, add(p, {x: -.5*DW, y:1*DH}));
-	ctx.beginPath();
-	doSpline(westSlope.concat(shadowLine));
+	ctx.lineWidth = 2;
+	[].forEach.call(peaks, function (p) {
+		ctx.drawMountain(p, DW * 2, DH);
+	});
+}
+
+CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h) {
+	this.beginPath();
+	var westSlope = handDrawnLine(add(p, {x:-w/2, y:h}), p);
+	var eastSlope = handDrawnLine(p, add(p, {x: w/2, y:h}));
+	this.doSpline(westSlope.concat(eastSlope));
+	this.fillStyle = "#fff";
+	this.fill();
+	this.stroke();
+
+	var shadowLine = handDrawnLine(p, add(p, {x: -w/4, y:h}));
+	this.beginPath();
+	this.doSpline(westSlope.concat(shadowLine));
 	// for (var i = 1; i < westSlope.length; ++i)
 	// 	doSpline(handDrawnLine(westSlope[i], eastSlope[i]));
-	ctx.fillStyle = "#000";
-	ctx.fill();
-});
+	this.fillStyle = "#000";
+	this.fill();
+}
+
+function bigOneInMiddle(ctx) {
+	var c = scale({x:W, y:H}, 1/2);
+	var s = 10;
+	var m = 1.1;
+	var can = body.$("#worker");//document.createElement("canvas");
+	console.log(can.getContext('2d'))
+	can.width = m * DW * 2;
+	can.height = m * DH;
+	can.getContext('2d').drawMountain({x:can.width / 2, y:(1-1/m)/2}, DW * 2, DH);
+
+	ctx.fillStyle = "#fff";
+	// ctx.fillRect(c.x - DW*s*m, c.y - DH*s*m/2, DW*s*m*2, DH*s*m);
+	ctx.drawImage(can, c.x - DW*s*m, c.y - DH*s*m/2, DW*s*m*2, DH*s*m);
+	// drawMountain(ctx, {x:c.x, y:c.y - h/2}, w, h);
+}
+
 
 function normalize(p)   { return scale(p, 1 / magnitude(p)) }
 function magnitude(p)   { return sqrt(p.x * p.x + p.y * p.y) }
@@ -77,16 +110,21 @@ function handDrawnLine(p0, p1) {
 	return result;
 }
 
-function moveTo(p) { ctx.moveTo(p.x, p.y) }
-function curveTo(ctl, end) { ctx.quadraticCurveTo(ctl.x, ctl.y, end.x, end.y) }
-function doSpline(ps, cont) {
-	// http://stackoverflow.com/questions/7054272/how-to-draw-smooth-curve-through-n-points-using-javascript-html5-canvas
-	if (!cont) moveTo(ps[0]);
-	for (var i = 1; i < ps.length - 2; ++i) {
-		curveTo(ps[i], average(ps[i], ps[i+1]));
-	}
-	curveTo(ps[ps.length - 2], ps[ps.length - 1]);
+CanvasRenderingContext2D.prototype.curveTo = function (ctl, end) {
+	this.quadraticCurveTo(ctl.x, ctl.y, end.x, end.y)
 }
+
+CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
+	// http://stackoverflow.com/questions/7054272/how-to-draw-smooth-curve-through-n-points-using-javascript-html5-canvas
+	if (!cont) this.moveTo(ps[0].x, ps[0].y);
+	for (var i = 1; i < ps.length - 2; ++i) {
+		this.curveTo(ps[i], average(ps[i], ps[i+1]));
+	}
+	this.curveTo(ps[ps.length - 2], ps[ps.length - 1]);
+}
+
+fieldOfMountains(canvas.getContext("2d"));
+bigOneInMiddle(canvas.getContext("2d"));
 
 </script>
 </body>
