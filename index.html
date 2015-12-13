@@ -61,7 +61,7 @@ CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h) {
 	this.stroke();
 
 	var shadowPt = add(p, {x: -w/8 + crand(20), y:h + crand(10)});
-	var shadowLine = handDrawnLine(p, shadowPt);
+	var shadowLine = handDrawnLine(p, shadowPt, 10);
 	var bottomThereof = handDrawnLine(shadowPt, westPt);
 	this.beginPath();
 	this.doSpline(westSlope.concat(shadowLine).concat(bottomThereof));
