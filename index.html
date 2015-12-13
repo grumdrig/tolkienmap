@@ -5,14 +5,12 @@
 <style>
 html, body {
 	margin: 0;
-	/*overflow: hidden;*/
+	overflow: hidden;
 }
-canvas { border: solid 1px red }
 </style>
 </head>
 <body>
 <canvas id="map"></canvas>
-<canvas id="worker"></canvas>
 <script>
 // Mimicking Hand-Drawn Pencil Lines
 // http://webhome.cs.uvic.ca/~blob/publications/cae08.pdf
@@ -26,7 +24,6 @@ var sqrt = Math.sqrt;
 
 var body = document.body;
 var canvas = body.$("canvas#map");
-// var ctx = ;
 
 var W = canvas.width  = window.innerWidth;
 var H = canvas.height = window.innerHeight;
@@ -59,9 +56,11 @@ CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h) {
 	this.fill();
 	this.stroke();
 
-	var shadowLine = handDrawnLine(p, add(p, {x: -w/4, y:h}));
+	var shadowCorner = add(p, {x: -w/4, y:h});
+	var shadowLine = handDrawnLine(p, shadowCorner);
+	var bottomThereof = handDrawnLine(shadowCorner, add(p, {x:-w/2, y:h}));
 	this.beginPath();
-	this.doSpline(westSlope.concat(shadowLine));
+	this.doSpline(westSlope.concat(shadowLine).concat(bottomThereof));
 	// for (var i = 1; i < westSlope.length; ++i)
 	// 	doSpline(handDrawnLine(westSlope[i], eastSlope[i]));
 	this.fillStyle = "#000";
@@ -72,7 +71,7 @@ function bigOneInMiddle(ctx) {
 	var c = scale({x:W, y:H}, 1/2);
 	var s = 10;
 	var m = 1.1;
-	var can = body.$("#worker");//document.createElement("canvas");
+	var can = document.createElement("canvas");
 	console.log(can.getContext('2d'))
 	can.width = m * DW * 2;
 	can.height = m * DH;
