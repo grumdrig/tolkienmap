@@ -50,16 +50,19 @@ function fieldOfMountains(ctx) {
 
 CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h) {
 	this.beginPath();
-	var westSlope = handDrawnLine(add(p, {x:-w/2, y:h}), p);
-	var eastSlope = handDrawnLine(p, add(p, {x: w/2, y:h}));
-	this.doSpline(westSlope.concat(eastSlope));
+	var westPt = add(p, {x:-w/2, y:h});
+	var eastPt = add(p, {x: w/2, y:h});
+	var westSlope = handDrawnLine(westPt, p);
+	var eastSlope = handDrawnLine(p, eastPt);
 	this.fillStyle = "#fff";
+	this.fillRect(westPt.x, westPt.y, w * 2, 20);
+	this.doSpline(westSlope.concat(eastSlope));
 	this.fill();
 	this.stroke();
 
-	var shadowCorner = add(p, {x: -w/8 + crand(20), y:h + crand(10)});
-	var shadowLine = handDrawnLine(p, shadowCorner);
-	var bottomThereof = handDrawnLine(shadowCorner, add(p, {x:-w/2, y:h}));
+	var shadowPt = add(p, {x: -w/8 + crand(20), y:h + crand(10)});
+	var shadowLine = handDrawnLine(p, shadowPt);
+	var bottomThereof = handDrawnLine(shadowPt, westPt);
 	this.beginPath();
 	this.doSpline(westSlope.concat(shadowLine).concat(bottomThereof));
 	// for (var i = 1; i < westSlope.length; ++i)
@@ -79,7 +82,7 @@ function bigOneInMiddle(ctx) {
 	can.getContext('2d').drawMountain({x:can.width / 2, y:(1-1/m)/2}, DW * 2, DH);
 
 	ctx.fillStyle = "#fff";
-	// ctx.fillRect(c.x - DW*s*m, c.y - DH*s*m/2, DW*s*m*2, DH*s*m);
+	ctx.fillRect(c.x - DW*s*m, c.y - DH*s*m/2, DW*s*m*2, DH*s*m);
 	ctx.drawImage(can, c.x - DW*s*m, c.y - DH*s*m/2, DW*s*m*2, DH*s*m);
 	// drawMountain(ctx, {x:c.x, y:c.y - h/2}, w, h);
 }
