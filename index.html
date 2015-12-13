@@ -14,8 +14,10 @@ html, body {
 <script>
 // Mimicking Hand-Drawn Pencil Lines
 // http://webhome.cs.uvic.ca/~blob/publications/cae08.pdf
-// Middle Earth!
+// Hi res Middle Earth
 // http://www.donsmaps.com/images29/middleearthlargelargerstill.jpg
+// Beleriand
+// https://atolkienistperspective.files.wordpress.com/2013/07/beleriand-map.jpg
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
 var rand = Math.random;
@@ -42,7 +44,6 @@ function fieldOfMountains(ctx) {
 	}
 	peaks = peaks.sort(function (a,b) { return a.y - b.y });
 
-	ctx.lineWidth = 2;
 	[].forEach.call(peaks, function (p) {
 		ctx.drawMountain(p, DW * 2, DH);
 	});
@@ -101,7 +102,6 @@ function bigOneInMiddle(ctx) {
 	var s = 10;
 	var m = 1.1;
 	var can = document.createElement("canvas");
-	console.log(can.getContext('2d'))
 	can.width = m * DW * 2;
 	can.height = m * DH;
 	can.getContext('2d').drawMountain({x:can.width / 2, y:(1-1/m)/2}, DW * 2, DH);
@@ -123,7 +123,7 @@ function average(p, q)  { return scale(add(p,q), 1/2) }
 
 
 function handDrawnLine(p0, p1, eccentricity) {
-	eccentricity = eccentricity || 5;
+	if (typeof eccentricity == 'undefined') eccentricity = 5;
 	var diff = subtract(p0, p1);
 	var dist = magnitude(diff);
 	var nsegments = (dist < 200) ? 4 : (dist < 400) ? 7 : 10;
@@ -131,7 +131,7 @@ function handDrawnLine(p0, p1, eccentricity) {
 	var result = [copy(p0)];
 	for (var i = 1; i < nsegments; ++i) {
 		var t = i / nsegments;
-		var h = 16 * pow(t, 4) - 6 * pow(t, 5) - 10 * pow(t, 3);
+		var h = 15 * pow(t, 4) - 6 * pow(t, 5) - 10 * pow(t, 3);
 		pt = add(p0, scale(diff, h));
 		result.push(add(pt, scale(normal, crand(eccentricity))));
 	}
@@ -152,11 +152,17 @@ CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
 	this.curveTo(ps[ps.length - 2], ps[ps.length - 1]);
 }
 
-CanvasRenderingContext2D.prototype.drawBorder = function (inset, separation) {
-	var ctx = this;
-	[inset, inset + separation].forEach(function (i) {
-		ctx.strokeRect(i, i, this.canvas.width - i * 2, this.canvas.height - i * 2);
-	});
+CanvasRenderingContext2D.prototype.drawBorder = function (inset) {
+	this.beginPath();
+	var r = this.canvas.width - inset;
+	var b = this.canvas.height - inset;
+	var tl = inset;
+	var e = 2;
+	this.doSpline(handDrawnLine({x:tl, y:tl}, {x:r,  y:tl}, e));
+	this.doSpline(handDrawnLine({x:r, y:tl},  {x:r,  y:b}, e), true);
+	this.doSpline(handDrawnLine({x:r, y:b},   {x:tl, y:b}, e), true);
+	this.doSpline(handDrawnLine({x:tl, y:b},  {x:tl, y:tl}, e), true);
+	this.stroke();
 }
 
 function drawMap() {
@@ -164,7 +170,10 @@ function drawMap() {
 	ctx.clearRect(0,0,canvas.width, canvas.height);
 	// fieldOfMountains(ctx);
 	// bigOneInMiddle(ctx);
-	ctx.drawBorder(10, 5)
+	ctx.lineWidth = 1;
+	ctx.drawBorder(10);
+	ctx.drawBorder(15);
+	ctx.clip();
 	mountainRange(ctx);
 	mountainRange(ctx);
 	mountainRange(ctx);
