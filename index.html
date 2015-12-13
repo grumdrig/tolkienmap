@@ -152,11 +152,19 @@ CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
 	this.curveTo(ps[ps.length - 2], ps[ps.length - 1]);
 }
 
+CanvasRenderingContext2D.prototype.drawBorder = function (inset, separation) {
+	var ctx = this;
+	[inset, inset + separation].forEach(function (i) {
+		ctx.strokeRect(i, i, this.canvas.width - i * 2, this.canvas.height - i * 2);
+	});
+}
+
 function drawMap() {
 	var ctx = canvas.getContext("2d");
 	ctx.clearRect(0,0,canvas.width, canvas.height);
 	// fieldOfMountains(ctx);
 	// bigOneInMiddle(ctx);
+	ctx.drawBorder(10, 5)
 	mountainRange(ctx);
 	mountainRange(ctx);
 	mountainRange(ctx);
