@@ -19,6 +19,7 @@ html, body {
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
 var rand = Math.random;
+function crand(scale) { return (rand() - 0.5) * scale }
 var pow = Math.pow;
 var sqrt = Math.sqrt;
 
@@ -56,7 +57,7 @@ CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h) {
 	this.fill();
 	this.stroke();
 
-	var shadowCorner = add(p, {x: -w/4, y:h});
+	var shadowCorner = add(p, {x: -w/8 + crand(20), y:h + crand(10)});
 	var shadowLine = handDrawnLine(p, shadowCorner);
 	var bottomThereof = handDrawnLine(shadowCorner, add(p, {x:-w/2, y:h}));
 	this.beginPath();
@@ -103,7 +104,7 @@ function handDrawnLine(p0, p1) {
 		var t = i / nsegments;
 		var h = 16 * pow(t, 4) - 6 * pow(t, 5) - 10 * pow(t, 3);
 		pt = add(p0, scale(diff, h));
-		result.push(add(pt, scale(normal, (rand() - 0.5) * 5)));
+		result.push(add(pt, scale(normal, crand(5))));
 	}
 	result.push(copy(p1));
 	return result;
@@ -122,8 +123,14 @@ CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
 	this.curveTo(ps[ps.length - 2], ps[ps.length - 1]);
 }
 
-fieldOfMountains(canvas.getContext("2d"));
-bigOneInMiddle(canvas.getContext("2d"));
+function drawMap() {
+	var ctx = canvas.getContext("2d");
+	ctx.clearRect(0,0,canvas.width, canvas.height);
+	fieldOfMountains(ctx);
+	bigOneInMiddle(ctx);
+}
+canvas.addEventListener("click", drawMap);
+drawMap();
 
 </script>
 </body>
