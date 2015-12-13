@@ -48,14 +48,14 @@ function fieldOfMountains(ctx) {
 	});
 }
 
-CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h) {
+CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h, transparent) {
 	this.beginPath();
 	var westPt = add(p, {x:-w/2, y:h});
 	var eastPt = add(p, {x: w/2, y:h});
 	var westSlope = handDrawnLine(westPt, p);
 	var eastSlope = handDrawnLine(p, eastPt);
 	this.fillStyle = "#fff";
-	this.fillRect(westPt.x, westPt.y, w * 2, 20);
+	if (!transparent) this.fillRect(westPt.x, westPt.y, w * 2, 20);
 	this.doSpline(westSlope.concat(eastSlope));
 	this.fill();
 	this.stroke();
@@ -84,6 +84,16 @@ CanvasRenderingContext2D.prototype.crosshatchRect = function (x, y, w, h) {
 	}
 	this.stroke();
 }
+
+function mountainRange(ctx) {
+	var x = ctx.canvas.width / 2;
+    N = 50;
+    for (var i = 0; i < N; ++i) {
+      x = x + crand(100);
+      y = (ctx.canvas.height - 64) * i / N + 16 * rand();
+      ctx.drawMountain({x:x, y:y}, DW * 2, DH, true);
+    }
+  }
 
 
 function bigOneInMiddle(ctx) {
@@ -145,8 +155,11 @@ CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
 function drawMap() {
 	var ctx = canvas.getContext("2d");
 	ctx.clearRect(0,0,canvas.width, canvas.height);
-	fieldOfMountains(ctx);
-	bigOneInMiddle(ctx);
+	// fieldOfMountains(ctx);
+	// bigOneInMiddle(ctx);
+	mountainRange(ctx);
+	mountainRange(ctx);
+	mountainRange(ctx);
 }
 canvas.addEventListener("click", drawMap);
 drawMap();
