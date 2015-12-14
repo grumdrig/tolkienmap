@@ -22,8 +22,11 @@ html, body {
 // https://atolkienistperspective.files.wordpress.com/2013/07/beleriand-map.jpg
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
+var PI = Math.PI;
 var pow = Math.pow;
 var sqrt = Math.sqrt;
+var cos = Math.cos;
+var sin = Math.sin;
 var abs = Math.abs;
 var min = Math.min;
 var max = Math.max;
@@ -192,19 +195,6 @@ CanvasRenderingContext2D.prototype.plotPoint = function (p) {
 	this.fillRect(p.x, p.y, 4, 4);
 }
 
-function averagePoints(pts) {
-	var result = new Array(pts.length);
-	for (var i = 0; i < pts.length; ++i) {
-		result[i] = pts[i];
-		for (var j = 0; j < pts.length; ++j) {
-			if (i == j) continue;
-			var d = distance(pts[i], pts[j]);
-			result[i] = add(result[i], scale(subtract(pts[j], pts[i]), 100000/(d * d * d)));
-		}
-	}
-	return result;
-}
-
 function minDistance(p, pts) {
 	var result = Number.POSITIVE_INFINITY;
 	for (var i = 0; i < pts.length; ++i) {
@@ -228,8 +218,61 @@ function randomMostDistantPoint(n, pts) {
 	return result;
 }
 
+function p2c(r, a) { return {x: r * cos(a), y: r * sin(a)} }
+
+CanvasRenderingContext2D.prototype.compassRose = function (cx, cy, r) {
+	var N = 16;
+	for (var i = 0; i < N; ++i) {
+		var a0 = i * 2 * PI / N;
+		var a1 = a0 + 2 * PI / N;
+		var e = 2;
+		var outer = handDrawnArc({x:cx, y:cy}, r, a0, a1, e);
+		var inner = handDrawnArc({x:cx, y:cy}, r * 0.83, a1, a0, e);
+		var con1 = handDrawnLine(outer[outer.length - 1], inner[0], e);
+		var con2 = handDrawnLine(inner[inner.length - 1], outer[0], e);
+		this.beginPath();
+		this.doSpline(outer);
+		this.doSpline(con1, true);
+		this.doSpline(inner);
+		this.doSpline(con2, true);
+		this.fillStyle = (i & 1) ? "red" : "black";
+		this.fill();
+	}
+	var RP = r * 1.1;
+	var RS = r * 0.2;
+	var ctx = this;
+	function compassPoint(a) {
+		var e = 1;
+		var c = {x:cx, y:cy};
+		var end = add(c, p2c(RP, a));
+		var s1 = add(c, p2c(RS, a + PI / 4));
+		var s2 = add(c, p2c(RS, a - PI / 4));
+		ctx.beginPath();
+		ctx.doSpline(handDrawnLine(c, s1, e));
+		ctx.doSpline(handDrawnLine(s1, end, e), true);
+		ctx.doSpline(handDrawnLine(end, c, e), true);
+		ctx.fillStyle = "black";
+		ctx.fill();
+		ctx.beginPath();
+		ctx.doSpline(handDrawnLine(c, s2, e));
+		ctx.doSpline(handDrawnLine(s2, end, e), true);
+		ctx.doSpline(handDrawnLine(end, c, e), true);
+		ctx.fillStyle = "red";
+		ctx.fill();
+	}
+	compassPoint(1 * PI / 4);
+	compassPoint(3 * PI / 4);
+	compassPoint(5 * PI / 4);
+	compassPoint(7 * PI / 4);
+	compassPoint(0 * PI / 2);
+	compassPoint(1 * PI / 2);
+	compassPoint(2 * PI / 2);
+	compassPoint(3 * PI / 2);
+}
+
 function drawMap() {
 	var ctx = canvas.getContext("2d");
+	ctx.save();
 	ctx.clearRect(0,0,canvas.width, canvas.height);
 	// fieldOfMountains(ctx);
 	// bigOneInMiddle(ctx);
@@ -237,24 +280,18 @@ function drawMap() {
 	ctx.drawBorder(10);
 	ctx.drawBorder(15);
 	ctx.clip();
+	var R = 45;
+	ctx.compassRose(W - 2 * R, 2 * R, R);
 	mountainRange(ctx);
 	mountainRange(ctx);
 	mountainRange(ctx);
 
 	var pts = [];
-	for (var i = 0; i < 1000; i++) {
+	for (var i = 0; i < 1000; i++)
 		pts.push(randomMostDistantPoint(1 + i/10, pts));
-	}
 	ctx.fillStyle = "red";
 	pts.forEach(function (p) { ctx.plotPoint(p) });
-	/*
-	pts = averagePoints(pts);
-	ctx.fillStyle = "blue";
-	// pts.forEach(function (p) { ctx.plotPoint(p) });
-	pts = averagePoints(pts);
-	ctx.fillStyle = "green";
-	pts.forEach(function (p) { ctx.plotPoint(p) });
-	*/
+	ctx.restore();
 }
 canvas.addEventListener("click", drawMap);
 drawMap();
