@@ -52,11 +52,11 @@ CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH) {
 	peaks = peaks.sort(function (a,b) { return a.y - b.y });
 
 	[].forEach.call(peaks, function (p) {
-		ctx.drawMountain(p, DW * 2, DH);
+		ctx.mountain(p, DW * 2, DH);
 	});
 }
 
-CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h, transparent) {
+CanvasRenderingContext2D.prototype.mountain = function (p, w, h, transparent) {
 	this.beginPath();
 	var westPt = add(p, {x:-w/2, y:h});
 	var eastPt = add(p, {x: w/2, y:h});
@@ -68,7 +68,7 @@ CanvasRenderingContext2D.prototype.drawMountain = function (p, w, h, transparent
 	this.fill();
 	this.stroke();
 
-	var shadowPt = add(p, {x: -w/8 + crand(20), y:h + crand(10)});
+	var shadowPt = add(p, {x: crand(w/3), y:h + crand(h/3)});
 	var shadowLine = handDrawnLine(p, shadowPt, 10);
 	var bottomThereof = handDrawnLine(shadowPt, westPt);
 	this.beginPath();
@@ -99,7 +99,7 @@ CanvasRenderingContext2D.prototype.mountainRange = function (DW, DH) {
     for (var i = 0; i < N; ++i) {
       x = x + crand(100);
       y = (this.canvas.height - 64) * i / N + 16 * rand();
-      this.drawMountain({x:x, y:y}, DW * 2, DH, true);
+      this.mountain({x:x, y:y}, DW * 2, DH, true);
     }
   }
 
@@ -111,12 +111,12 @@ function bigOneInMiddle(ctx) {
 	var can = document.createElement("canvas");
 	can.width = m * DW * 2;
 	can.height = m * DH;
-	can.getContext('2d').drawMountain({x:can.width / 2, y:(1-1/m)/2}, DW * 2, DH);
+	can.getContext('2d').mountain({x:can.width / 2, y:(1-1/m)/2}, DW * 2, DH);
 
 	ctx.fillStyle = "#fff";
 	ctx.fillRect(c.x - DW*s*m, c.y - DH*s*m/2, DW*s*m*2, DH*s*m);
 	ctx.drawImage(can, c.x - DW*s*m, c.y - DH*s*m/2, DW*s*m*2, DH*s*m);
-	// drawMountain(ctx, {x:c.x, y:c.y - h/2}, w, h);
+	// mountain(ctx, {x:c.x, y:c.y - h/2}, w, h);
 }
 
 
@@ -294,18 +294,18 @@ function drawMap() {
 	var ctx = canvas.getContext("2d");
 	ctx.save();
 	ctx.clearRect(0,0,canvas.width, canvas.height);
-	// ctx.fieldOfMountains(30, 30);
-	// ctx.bigOneInMiddle(30, 30);
 	ctx.lineWidth = 1;
 	ctx.drawBorder(10);
 	ctx.drawBorder(15);
 	ctx.clip();
 	var R = 45;
 	ctx.compassRose(W - 2 * R, 2 * R, R);
-	var DW = 30, DH = 30;
-	ctx.mountainRange(DW, DH);
-	ctx.mountainRange(DW, DH);
-	ctx.mountainRange(DW, DH);
+	var DW = 30, DH = DW;
+	ctx.fieldOfMountains(DW, DH);
+	// ctx.bigOneInMiddle(30, 30);
+	// ctx.mountainRange(DW, DH);
+	// ctx.mountainRange(DW, DH);
+	// ctx.mountainRange(DW, DH);
 	ctx.forest(100, 100, 200, 300);
 }
 canvas.addEventListener("click", drawMap);
