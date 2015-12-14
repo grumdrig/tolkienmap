@@ -40,11 +40,9 @@ var canvas = body.$("canvas#map");
 var W = canvas.width  = window.innerWidth;
 var H = canvas.height = window.innerHeight;
 
-var DH = 30;
-var DW = 30;
-
 // Draw the mountains
-function fieldOfMountains(ctx) {
+CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH) {
+	var ctx = this;
 	var peaks = [];
 	for (var j = H; j > 0; j -= DH) {
 	    for (var i = W; i > 0; i -= DW) {
@@ -95,13 +93,13 @@ CanvasRenderingContext2D.prototype.crosshatchRect = function (x, y, w, h) {
 	this.stroke();
 }
 
-function mountainRange(ctx) {
-	var x = ctx.canvas.width / 2;
+CanvasRenderingContext2D.prototype.mountainRange = function (DW, DH) {
+	var x = this.canvas.width / 2;
     N = 50;
     for (var i = 0; i < N; ++i) {
       x = x + crand(100);
-      y = (ctx.canvas.height - 64) * i / N + 16 * rand();
-      ctx.drawMountain({x:x, y:y}, DW * 2, DH, true);
+      y = (this.canvas.height - 64) * i / N + 16 * rand();
+      this.drawMountain({x:x, y:y}, DW * 2, DH, true);
     }
   }
 
@@ -296,17 +294,18 @@ function drawMap() {
 	var ctx = canvas.getContext("2d");
 	ctx.save();
 	ctx.clearRect(0,0,canvas.width, canvas.height);
-	// fieldOfMountains(ctx);
-	// bigOneInMiddle(ctx);
+	// ctx.fieldOfMountains(30, 30);
+	// ctx.bigOneInMiddle(30, 30);
 	ctx.lineWidth = 1;
 	ctx.drawBorder(10);
 	ctx.drawBorder(15);
 	ctx.clip();
 	var R = 45;
 	ctx.compassRose(W - 2 * R, 2 * R, R);
-	mountainRange(ctx);
-	mountainRange(ctx);
-	mountainRange(ctx);
+	var DW = 30, DH = 30;
+	ctx.mountainRange(DW, DH);
+	ctx.mountainRange(DW, DH);
+	ctx.mountainRange(DW, DH);
 	ctx.forest(100, 100, 200, 300);
 }
 canvas.addEventListener("click", drawMap);
