@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Mountain Map</title>
+<title>Map of Central Planet</title>
 <style>
 html, body {
 	margin: 0;
@@ -16,14 +16,20 @@ html, body {
 // http://webhome.cs.uvic.ca/~blob/publications/cae08.pdf
 // Hi res Middle Earth
 // http://www.donsmaps.com/images29/middleearthlargelargerstill.jpg
+// Middle Earth as in books, I think
+// http://www.lord-of-the-rings.org/collections/maps/map6[1].jpg
 // Beleriand
 // https://atolkienistperspective.files.wordpress.com/2013/07/beleriand-map.jpg
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
-var rand = Math.random;
-function crand(scale) { return (rand() - 0.5) * scale }
 var pow = Math.pow;
 var sqrt = Math.sqrt;
+var abs = Math.abs;
+var min = Math.min;
+var max = Math.max;
+var round = Math.round;
+var rand = Math.random;
+function crand(scale) { return (rand() - 0.5) * scale }
 
 var body = document.body;
 var canvas = body.$("canvas#map");
@@ -120,6 +126,7 @@ function add(p, q)      { return {x: p.x + q.x, y: p.y + q.y} }
 function scale(p, s)    { return {x: p.x * s,   y: p.y * s} }
 function copy(p)        { return {x: p.x, y: p.y} }
 function average(p, q)  { return scale(add(p,q), 1/2) }
+function distance(p, q) { return magnitude(subtract(p, q)) }
 
 
 function handDrawnLine(p0, p1, eccentricity) {
@@ -136,6 +143,22 @@ function handDrawnLine(p0, p1, eccentricity) {
 		result.push(add(pt, scale(normal, crand(eccentricity))));
 	}
 	result.push(copy(p1));
+	return result;
+}
+
+function handDrawnArc(c, r, a0, a1, eccentricity) {
+	if (typeof eccentricity == 'undefined') eccentricity = 5;
+	var circ = abs(a1 - a0) * r;
+	var nsegments = max(4, round(circ / 50));
+	function point(a) { return {x:c.x + r * cos(a), y:c.y + r * sin(a)} }
+	var result = [point(a0)];
+	for (var i = 1; i < nsegments; ++i) {
+		var t = i / nsegments;
+		var pt = point(a0 + (a1 - a0) * t);
+		var normal = scale(subtract(pt, c), 1/r);
+		result.push(add(pt, scale(normal, crand(eccentricity))));
+	}
+	result.push(point(a1));
 	return result;
 }
 
@@ -165,6 +188,46 @@ CanvasRenderingContext2D.prototype.drawBorder = function (inset) {
 	this.stroke();
 }
 
+CanvasRenderingContext2D.prototype.plotPoint = function (p) {
+	this.fillRect(p.x, p.y, 4, 4);
+}
+
+function averagePoints(pts) {
+	var result = new Array(pts.length);
+	for (var i = 0; i < pts.length; ++i) {
+		result[i] = pts[i];
+		for (var j = 0; j < pts.length; ++j) {
+			if (i == j) continue;
+			var d = distance(pts[i], pts[j]);
+			result[i] = add(result[i], scale(subtract(pts[j], pts[i]), 100000/(d * d * d)));
+		}
+	}
+	return result;
+}
+
+function minDistance(p, pts) {
+	var result = Number.POSITIVE_INFINITY;
+	for (var i = 0; i < pts.length; ++i) {
+		var d = distance(p, pts[i]);
+		if (result > d) result = d;
+	}
+	return result;
+}
+
+function randomMostDistantPoint(n, pts) {
+	var result;
+	var farness;
+	for (var i = 0; i < n; ++i) {
+		var c = { x: rand() * W, y: rand() * H };
+		var d = minDistance(c, pts);
+		if (i == 0 || farness < d) {
+			farness = d;
+			result = c;
+		}
+	}
+	return result;
+}
+
 function drawMap() {
 	var ctx = canvas.getContext("2d");
 	ctx.clearRect(0,0,canvas.width, canvas.height);
@@ -177,6 +240,21 @@ function drawMap() {
 	mountainRange(ctx);
 	mountainRange(ctx);
 	mountainRange(ctx);
+
+	var pts = [];
+	for (var i = 0; i < 1000; i++) {
+		pts.push(randomMostDistantPoint(1 + i/10, pts));
+	}
+	ctx.fillStyle = "red";
+	pts.forEach(function (p) { ctx.plotPoint(p) });
+	/*
+	pts = averagePoints(pts);
+	ctx.fillStyle = "blue";
+	// pts.forEach(function (p) { ctx.plotPoint(p) });
+	pts = averagePoints(pts);
+	ctx.fillStyle = "green";
+	pts.forEach(function (p) { ctx.plotPoint(p) });
+	*/
 }
 canvas.addEventListener("click", drawMap);
 drawMap();
