@@ -204,20 +204,6 @@ function minDistance(p, pts) {
 	return result;
 }
 
-function randomMostDistantPoint(n, pts) {
-	var result;
-	var farness;
-	for (var i = 0; i < n; ++i) {
-		var c = { x: rand() * W, y: rand() * H };
-		var d = minDistance(c, pts);
-		if (i == 0 || farness < d) {
-			farness = d;
-			result = c;
-		}
-	}
-	return result;
-}
-
 function p2c(r, a) { return {x: r * cos(a), y: r * sin(a)} }
 
 CanvasRenderingContext2D.prototype.compassRose = function (cx, cy, r) {
@@ -270,6 +256,42 @@ CanvasRenderingContext2D.prototype.compassRose = function (cx, cy, r) {
 	compassPoint(3 * PI / 2);
 }
 
+
+CanvasRenderingContext2D.prototype.forest = function (x, y, w, h) {
+	var ctx = this;
+	function randomMostDistantPoint(n, pts) {
+		var result;
+		var farness;
+		for (var i = 0; i < n; ++i) {
+			var c = { x: x + rand() * w, y: y + rand() * h };
+			var d = minDistance(c, pts);
+			if (i == 0 || farness < d) {
+				farness = d;
+				result = c;
+			}
+		}
+		return result;
+	}
+
+	var pts = [];
+	var R = 10;
+	var n = w * h / (R * R * PI/2);
+	for (var i = 0; i < n; i++)
+		pts.push(randomMostDistantPoint(1 + i/10, pts));
+	pts = pts.sort(function (a,b) { return a.y - b.y });
+	ctx.fillStyle = "white";
+	pts.forEach(function (p) {
+		ctx.beginPath();
+		ctx.doSpline(handDrawnLine(p, add(p, {x:0, y:R*1.3})));
+		ctx.stroke();
+		ctx.beginPath();
+		ctx.doSpline(handDrawnArc(p, R, -PI/2, 3*PI/2));
+		ctx.fill();
+		ctx.stroke();
+	});
+}
+
+
 function drawMap() {
 	var ctx = canvas.getContext("2d");
 	ctx.save();
@@ -285,13 +307,7 @@ function drawMap() {
 	mountainRange(ctx);
 	mountainRange(ctx);
 	mountainRange(ctx);
-
-	var pts = [];
-	for (var i = 0; i < 1000; i++)
-		pts.push(randomMostDistantPoint(1 + i/10, pts));
-	ctx.fillStyle = "red";
-	pts.forEach(function (p) { ctx.plotPoint(p) });
-	ctx.restore();
+	ctx.forest(100, 100, 200, 300);
 }
 canvas.addEventListener("click", drawMap);
 drawMap();
