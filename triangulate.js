@@ -5,12 +5,11 @@
 // v.sort(function (p1, p2) { return p1.x - p2.x });
 // Returned is a list of triangular faces in the array
 // These triangles are arranged in a consistent clockwise order.
-function Triangulate(pxyz) {
+function triangulate(pxyz) {
    var nv = pxyz.length;
 
    function triangle(p1, p2, p3) { return {p1:p1, p2:p2, p3:p3, complete:false} }
    function edge(p1, p2) { return {p1:p1, p2:p2} }
-   function xyz(x,y,z) { return {x:x, y:y, z:z} }
 
    var v = [];  // of triangle(...)
    var edges = [];  // of edge(...)
@@ -38,9 +37,9 @@ function Triangulate(pxyz) {
    // The supertriangle coordinates are added to the end of the
    // vertex list. The supertriangle is the first triangle in
    // the triangle list.
-   pxyz.push(xyz(xmid - 20 * dmax, ymid - dmax, 0));
-   pxyz.push(xyz(xmid, ymid + 20 * dmax, 0));
-   pxyz.push(xyz(xmid + 20 * dmax, ymid - dmax, 0));
+   pxyz.push({x: xmid - 20 * dmax, y: ymid - dmax});
+   pxyz.push({x: xmid,             y: ymid + 20 * dmax});
+   pxyz.push({x: xmid + 20 * dmax, y: ymid - dmax});
    v.push(triangle(nv, nv+1, nv+2));
 
    // Include each point one at a time into the existing mesh
@@ -52,7 +51,7 @@ function Triangulate(pxyz) {
       // If the point (xp,yp) lies inside the circumcircle then the
       // three edges of that triangle are added to the edge buffer
       // and that triangle is removed.
-      for (int j = 0; j < v.length; j++) {
+      for (var j = 0; j < v.length; j++) {
          if (v[j].complete)
             continue;
          var x1 = pxyz[v[j].p1].x;
@@ -106,7 +105,7 @@ function Triangulate(pxyz) {
 
    // Remove triangles with supertriangle vertices
    v = v.filter(function (t) {
-      return (t.p1 < nv && t.p2 < nv && t.p3 < nv;
+      return t.p1 < nv && t.p2 < nv && t.p3 < nv;
    });
 
    return v;
@@ -128,6 +127,7 @@ function CircumCircle(xp, yp, x1, y1, x2, y2, x3, y3) {
    var fabsy2y3 = fabs(y2-y3);
 
    /* Check for coincident points */
+   var EPSILON = 0.0001;
    if (fabsy1y2 < EPSILON && fabsy2y3 < EPSILON)
        return { inside: false };
 
