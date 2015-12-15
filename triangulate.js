@@ -44,8 +44,7 @@ function triangulate(pxyz) {
 
    // Include each point one at a time into the existing mesh
    for (var i = 0; i < nv; i++) {
-      var xp = pxyz[i].x;
-      var yp = pxyz[i].y;
+      var p = pxyz[i];
 
       // Set up the edge buffer.
       // If the point (xp,yp) lies inside the circumcircle then the
@@ -54,14 +53,11 @@ function triangulate(pxyz) {
       for (var j = 0; j < v.length; j++) {
          if (v[j].complete)
             continue;
-         var x1 = pxyz[v[j].p1].x;
-         var y1 = pxyz[v[j].p1].y;
-         var x2 = pxyz[v[j].p2].x;
-         var y2 = pxyz[v[j].p2].y;
-         var x3 = pxyz[v[j].p3].x;
-         var y3 = pxyz[v[j].p3].y;
-         var cc = CircumCircle(xp,yp,x1,y1,x2,y2,x3,y3);
-         if (cc.xc < xp && ((xp-cc.xc)*(xp-cc.xc)) > cc.rsqr)
+         var p1 = pxyz[v[j].p1];
+         var p2 = pxyz[v[j].p2];
+         var p3 = pxyz[v[j].p3];
+         var cc = CircumCircle(p.x, p.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+         if (cc.xc < p.x && ((p.x-cc.xc)*(p.x-cc.xc)) > cc.rsqr)
 				v[j].complete = true;
          if (cc.inside) {
             edges.push(edge(v[j].p1, v[j].p2));
@@ -127,7 +123,7 @@ function CircumCircle(xp, yp, x1, y1, x2, y2, x3, y3) {
    var fabsy2y3 = fabs(y2-y3);
 
    /* Check for coincident points */
-   var EPSILON = 0.0001;
+   var EPSILON = 0.0000001;
    if (fabsy1y2 < EPSILON && fabsy2y3 < EPSILON)
        return { inside: false };
 
