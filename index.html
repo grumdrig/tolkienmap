@@ -302,7 +302,7 @@ function dump(label, arr) {
 
 CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
-	var R = 80;
+	var R = 20;
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	// pts = [{x:x,y:y},
@@ -328,16 +328,18 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ctx.stroke();
 	});
 
-	ctx.strokeStyle = "green";
+
 	var voi = dual(pts, triangles);
-	voi.edges.forEach(function (e) {
-		ctx.beginPath();
-		ctx.moveTo(voi.vertices[e.p1].x, voi.vertices[e.p1].y);
-		ctx.lineTo(voi.vertices[e.p2].x, voi.vertices[e.p2].y);
-		// ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
-		ctx.stroke();
-	});
-	ctx.strokeStyle = "black";
+
+	// ctx.strokeStyle = "green";
+	// voi.edges.forEach(function (e) {
+	// 	ctx.beginPath();
+	// 	ctx.moveTo(voi.vertices[e.p1].x, voi.vertices[e.p1].y);
+	// 	ctx.lineTo(voi.vertices[e.p2].x, voi.vertices[e.p2].y);
+	// 	// ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
+	// 	ctx.stroke();
+	// });
+	// ctx.strokeStyle = "black";
 
 	// ctx.fillStyle = "red";
 	// pts.forEach(function (p) {
@@ -354,7 +356,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			var es = voi.vertices[i].edges;
 			var result = new Set();
 			for (var j = 0; j < es.length; ++j) {
-				var e = es[j];
+				var e = voi.edges[es[j]];
 				result.add(i == e.p1 ? e.p2 : e.p1);
 			}
 			return result;
@@ -362,7 +364,10 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		function (i,j) {
 			return distance(voi.vertices[i], voi.vertices[j]);
 		});
-	console.log(0, voi.vertices.length - 1, path);
+	for (var i = 0; i < path.length - 1; i++)
+		ctx.doSpline(handDrawnLine(voi.vertices[path[i]], voi.vertices[path[i+1]]), i!=0);
+	ctx.strokeStyle = "red";
+	ctx.stroke();
 }
 
 function meander(p, n, d, a) {
@@ -380,6 +385,7 @@ function drawMap() {
 	ctx.save();
 	ctx.clearRect(0,0,canvas.width, canvas.height);
 	ctx.lineWidth = 1;
+	ctx.strokeStyle = "#000";
 	ctx.drawBorder(10);
 	ctx.drawBorder(15);
 	ctx.clip();
@@ -413,8 +419,7 @@ function astar(start, goal, neighbors, dist_between, heuristic_cost_estimate) {
     while (OpenSet.length > 0) {
     	OpenSet.sort(function (a,b) { return f_score[b] - f_score[a] });
         var current = OpenSet.pop();
-        console.log(current);
-        if (current = goal) {
+        if (current == goal) {
         	// Reconstruct path
     	    var total_path = [current];
 			while (current in Came_From) {
@@ -425,7 +430,6 @@ function astar(start, goal, neighbors, dist_between, heuristic_cost_estimate) {
 		}
         ClosedSet.add(current);
         var ns = neighbors(current);
-        console.log(ns);
         for (let neighbor of ns) {
             if (ClosedSet.has(neighbor))
                 continue;		// Ignore the neighbor which is already evaluated.
