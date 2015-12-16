@@ -12,7 +12,6 @@ function triangulate(pxyz) {
    function edge(p1, p2) { return {p1:p1, p2:p2} }
 
    var v = [];  // of triangle(...)
-   var edges = [];  // of edge(...)
 
    // Find the maximum and minimum vertex bounds.
    // This is to allow calculation of the bounding triangle
@@ -45,6 +44,7 @@ function triangulate(pxyz) {
    // Include each point one at a time into the existing mesh
    for (var i = 0; i < nv; i++) {
       var p = pxyz[i];
+      var edges = [];  // of edge(...)
 
       // Set up the edge buffer.
       // If the point (xp,yp) lies inside the circumcircle then the

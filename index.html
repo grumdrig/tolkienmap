@@ -299,7 +299,6 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
 	var R = 30;
 	var N = w * h / (R * R * PI/2);
-	N = 4;
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	pts.sort(function (p1,p2) { return p1.x - p2.x });
 	var triangles = triangulate(pts);
