@@ -104,6 +104,10 @@ function triangulate(pxyz) {
       return t.p1 < nv && t.p2 < nv && t.p3 < nv;
    });
 
+   pxyz.pop();
+   pxyz.pop();
+   pxyz.pop();
+
    return v;
 }
 
@@ -176,6 +180,7 @@ function dual(pts, triangles) {
    for (var i = 0; i < triangles.length; ++i) {
       var t = triangles[i];
       var cc = circumCircle(pts[t.p1], pts[t.p2], pts[t.p3]);
+      cc.r = Math.sqrt(cc.rr);
       // console.log(cc, t);
       verts.push(cc);
       function addEdge(p1, p2) {
@@ -192,15 +197,42 @@ function dual(pts, triangles) {
       var e = edges[i];
       edges[i] = {p1: verts[e.ts[0]], p2: verts[e.ts[1]]};
    }
+
    var es = [];
    for (var k in edges) {
       var e = edges[k];
-      if (e.ts.length > 1) {
-         es.push(edges[k]);
-         // console.log(k, edges[k], edges[k].ts);
+      if (e.ts.length == 1) {
+         // This edge is on the outside, w/o a triangle on the other side, so we
+         // must construct a point for the edge
+         e.ts.push(verts.length);  // ...it'll be the next one which we're building now
+         // First candidate is the midpoint on the edge.
+         var mid = midpoint(pts[e.p1], pts[e.p2]);
+         // That's the right one if it's closer to either of the edge points than it is to the third
+         // triangle point which is not on this edge
+         var t1 = triangles[e.ts[0]];
+         var p3 = [t1.p1, t1.p2, t1.p3].filter(function (p) { return p != e.p1 && p != e.p2 })[0];
+         p3 = pts[p3];
+         if (dist2(mid, pts[e.p1]) < dist2(mid, p3)) {
+            verts.push(mid);
+         } else {
+            // Must need to go the opposite way
+            var c1 = verts[e.ts[0]];
+            var opp = subtract(scale(c1, 2), mid);
+            verts.push(opp);
+         }
       }
+      es.push({p1:e.ts[0], p2:e.ts[1]});
    }
    return {vertices: verts, edges: es};
+}
+
+function midpoint(v1, v2) {
+   return {x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2};
+}
+
+function dist2(p, q) {
+   var dx = p.x - q.x, dy = p.y - q.y;
+   return dx*dx + dy*dy;
 }
 
 

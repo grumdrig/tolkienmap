@@ -294,14 +294,26 @@ CanvasRenderingContext2D.prototype.forest = function (x, y, w, h) {
 	});
 }
 
+function dump(label, arr) {
+	for (var i = 0; i < arr.length; ++i) console.log(label, i, arr[i]);
+}
+
 CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
 	var R = 50;
 	var N = w * h / (R * R * PI/2);
-	N = 10;
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
+	// pts = [{x:x,y:y},
+	// {x:x+w/2,y:y+h},
+	// //{x:x+w,y},
+	// //{x:x, y:y+h},
+	// {x:w/2,y:h/2}];
+	//pts = [{x:300,y:300},{x:200,y:250},{x:375,y:250}];
 	pts.sort(function (p1,p2) { return p1.x - p2.x });
 	var triangles = triangulate(pts);
+	dump("POINTS", pts);
+	dump("TRIANGLES", triangles);
+	ctx.strokeStyle = "#fff8f8";
 	triangles.forEach(function (t) {
 		ctx.beginPath();
 		ctx.doSpline(handDrawnLine(pts[t.p1], pts[t.p2]));
@@ -318,7 +330,8 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 
 	ctx.strokeStyle = "green";
 	var voi = dual(pts, triangles);
-	console.log(voi);
+	dump("VOI VERTS", voi.vertices);
+	dump("VOI EDGES", voi.edges);
 	voi.edges.forEach(function (e) {
 		ctx.beginPath();
 		ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
@@ -328,12 +341,12 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 
 	ctx.fillStyle = "red";
 	pts.forEach(function (p) {
-		ctx.fillRect(p.x, p.y, 4, 4);
+		ctx.fillRect(p.x, p.y, 6, 6);
 	});
 
-	ctx.fillStyle = "magenta";
+	ctx.fillStyle = "#00f";
 	voi.vertices.forEach(function (p) {
-		ctx.fillRect(p.x, p.y, 4, 4);
+		ctx.fillRect(p.x, p.y, 6, 6);
 	});
 }
 
@@ -360,10 +373,10 @@ function drawMap() {
 	var DW = 20, DH = DW;
 	// ctx.fieldOfMountains(DW, DH);
 	// ctx.bigOneInMiddle(30, 30);
-	ctx.mountainRange(DW, DH);
-	ctx.mountainRange(DW, DH);
-	ctx.mountainRange(DW, DH);
-	ctx.forest(100, 100, 200, 300);
+	// ctx.mountainRange(DW, DH);
+	// ctx.mountainRange(DW, DH);
+	// ctx.mountainRange(DW, DH);
+	// ctx.forest(100, 100, 200, 300);
 	// for (var i = 0; i < 100; ++i)
 	// 	ctx.doSpline(meander({x:W/2, y:0}, 10, H * 1.25, PI/2));
 	// ctx.stroke();
