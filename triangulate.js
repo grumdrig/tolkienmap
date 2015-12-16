@@ -56,10 +56,10 @@ function triangulate(pxyz) {
          var p1 = pxyz[v[j].p1];
          var p2 = pxyz[v[j].p2];
          var p3 = pxyz[v[j].p3];
-         var cc = CircumCircle(p.x, p.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
-         if (cc.xc < p.x && ((p.x-cc.xc)*(p.x-cc.xc)) > cc.rsqr)
+         var cc = circumCircle(p1, p2, p3);
+         if (cc.x < p.x && ((p.x-cc.x)*(p.x-cc.x)) > cc.rr)
 				v[j].complete = true;
-         if (cc.inside) {
+         if (inCircle(p.x, p.y, cc)) {
             edges.push(edge(v[j].p1, v[j].p2));
             edges.push(edge(v[j].p2, v[j].p3));
             edges.push(edge(v[j].p3, v[j].p1));
@@ -111,43 +111,43 @@ var fabs = Math.abs;
 
 /*
    Return { inside: true } if a point (xp,yp) is inside the circumcircle made up
-   of the points (x1,y1), (x2,y2), (x3,y3)
+   of the points (x1,y1), (x2,y2), (p3.x,y3)
    The circumcircle center is returned as (xc,yc) and the squared radius rsqr
    NOTE: A point on the edge is inside the circumcircle
 */
-function CircumCircle(xp, yp, x1, y1, x2, y2, x3, y3) {
+var EPSILON = 0.0000001;
+function circumCircle(p1, p2, p3) {
    var m1,m2,mx1,mx2,my1,my2;
    var dx,dy,drsqr;
 
-   var fabsy1y2 = fabs(y1-y2);
-   var fabsy2y3 = fabs(y2-y3);
+   var fabsy1y2 = fabs(p1.y - p2.y);
+   var fabsy2y3 = fabs(p2.y - p3.y);
 
    /* Check for coincident points */
-   var EPSILON = 0.0000001;
    if (fabsy1y2 < EPSILON && fabsy2y3 < EPSILON)
-       return { inside: false };
+       return { x:p1.x, y:p1.y, r:0 };
 
    var cx, yc, rsqr;
 
    if (fabsy1y2 < EPSILON) {
-      var m2 = - (x3-x2) / (y3-y2);
-      var mx2 = (x2 + x3) / 2;
-      var my2 = (y2 + y3) / 2;
-      xc = (x2 + x1) / 2;
+      var m2 = - (p3.x - p2.x) / (p3.y - p2.y);
+      var mx2 = (p2.x + p3.x) / 2;
+      var my2 = (p2.y + p3.y) / 2;
+      xc = (p2.x + p1.x) / 2;
       yc = m2 * (xc - mx2) + my2;
    } else if (fabsy2y3 < EPSILON) {
-      var m1 = - (x2-x1) / (y2-y1);
-      var mx1 = (x1 + x2) / 2;
-      var my1 = (y1 + y2) / 2;
-      xc = (x3 + x2) / 2;
+      var m1 = - (p2.x - p1.x) / (p2.y - p1.y);
+      var mx1 = (p1.x + p2.x) / 2;
+      var my1 = (p1.y + p2.y) / 2;
+      xc = (p3.x + p2.x) / 2;
       yc = m1 * (xc - mx1) + my1;
    } else {
-      var m1 = - (x2-x1) / (y2-y1);
-      var m2 = - (x3-x2) / (y3-y2);
-      var mx1 = (x1 + x2) / 2;
-      var mx2 = (x2 + x3) / 2;
-      var my1 = (y1 + y2) / 2;
-      var my2 = (y2 + y3) / 2;
+      var m1 = - (p2.x - p1.x) / (p2.y - p1.y);
+      var m2 = - (p3.x - p2.x) / (p3.y - p2.y);
+      var mx1 = (p1.x + p2.x) / 2;
+      var mx2 = (p2.x + p3.x) / 2;
+      var my1 = (p1.y + p2.y) / 2;
+      var my2 = (p2.y + p3.y) / 2;
       xc = (m1 * mx1 - m2 * mx2 + my2 - my1) / (m1 - m2);
       if (fabsy1y2 > fabsy2y3) {
          yc = m1 * (xc - mx1) + my1;
@@ -156,18 +156,51 @@ function CircumCircle(xp, yp, x1, y1, x2, y2, x3, y3) {
       }
    }
 
-   var dx = x2 - xc;
-   var dy = y2 - yc;
+   var dx = p2.x - xc;
+   var dy = p2.y - yc;
    rsqr = dx*dx + dy*dy;
-
-   dx = xp - xc;
-   dy = yp - yc;
-   drsqr = dx*dx + dy*dy;
-
-   return {
-      inside: (drsqr - rsqr) <= EPSILON,
-      xc: xc,
-      yc: yc,
-      rsqr: rsqr
-   };
+   return {x: xc, y: yc, rr: rsqr};
 }
+
+function inCircle(xp, yp, cc) {
+   var dx = xp - cc.x;
+   var dy = yp - cc.y;
+   var dsqr = dx*dx + dy*dy;
+   return (dsqr - cc.rr) <= EPSILON;
+}
+
+function dual(pts, triangles) {
+   var verts = [];
+   var edges = {};
+   function key(p1, p2) { return p1 + "," + p2 }
+   for (var i = 0; i < triangles.length; ++i) {
+      var t = triangles[i];
+      var cc = circumCircle(pts[t.p1], pts[t.p2], pts[t.p3]);
+      // console.log(cc, t);
+      verts.push(cc);
+      function addEdge(p1, p2) {
+         if (p1 > p2) { var t = p1; p1 = p2; p2 = t }
+         var k = key(p1, p2);
+         if (!(k in edges)) edges[k] = {p1:p1, p2:p2, ts:[]};
+         edges[k].ts.push(i);
+      }
+      addEdge(t.p1, t.p2);
+      addEdge(t.p2, t.p3);
+      addEdge(t.p3, t.p1);
+   }
+   for (var i = 0; i < edges.length; ++i) {
+      var e = edges[i];
+      edges[i] = {p1: verts[e.ts[0]], p2: verts[e.ts[1]]};
+   }
+   var es = [];
+   for (var k in edges) {
+      var e = edges[k];
+      if (e.ts.length > 1) {
+         es.push(edges[k]);
+         // console.log(k, edges[k], edges[k].ts);
+      }
+   }
+   return {vertices: verts, edges: es};
+}
+
+

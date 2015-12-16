@@ -282,7 +282,6 @@ CanvasRenderingContext2D.prototype.forest = function (x, y, w, h) {
 	var R = 10;
 	var pts = quasiRandomPointCloud(w * h / (R * R * PI/2), x, y, w, h);
 	pts = pts.sort(function (a,b) { return a.y - b.y });
-	console.log(pts[3]);
 	ctx.fillStyle = "white";
 	pts.forEach(function (p) {
 		ctx.beginPath();
@@ -297,21 +296,40 @@ CanvasRenderingContext2D.prototype.forest = function (x, y, w, h) {
 
 CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
-	var R = 30;
+	var R = 50;
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	pts.sort(function (p1,p2) { return p1.x - p2.x });
 	var triangles = triangulate(pts);
 	triangles.forEach(function (t) {
 		ctx.beginPath();
-		ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
-		ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
-		ctx.lineTo(pts[t.p3].x, pts[t.p3].y);
-		ctx.lineTo(pts[t.p1].x, pts[t.p1].y);
+		ctx.doSpline(handDrawnLine(pts[t.p1], pts[t.p2]));
+		ctx.doSpline(handDrawnLine(pts[t.p2], pts[t.p3]));
+		ctx.doSpline(handDrawnLine(pts[t.p3], pts[t.p1]));
+		// ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
+		// ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
+		// ctx.lineTo(pts[t.p3].x, pts[t.p3].y);
+		// ctx.lineTo(pts[t.p1].x, pts[t.p1].y);
 		ctx.stroke();
 	});
+
+	ctx.strokeStyle = "green";
+	var voi = dual(pts, triangles);
+	console.log(voi);
+	voi.edges.forEach(function (e) {
+		ctx.beginPath();
+		ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
+		ctx.stroke();
+	});
+	ctx.strokeStyle = "black";
+
 	ctx.fillStyle = "red";
 	pts.forEach(function (p) {
+		ctx.fillRect(p.x, p.y, 4, 4);
+	});
+
+	ctx.fillStyle = "magenta";
+	voi.vertices.forEach(function (p) {
 		ctx.fillRect(p.x, p.y, 4, 4);
 	});
 }
