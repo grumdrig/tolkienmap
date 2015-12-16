@@ -180,8 +180,7 @@ function dual(pts, triangles) {
    for (var i = 0; i < triangles.length; ++i) {
       var t = triangles[i];
       var cc = circumCircle(pts[t.p1], pts[t.p2], pts[t.p3]);
-      cc.r = Math.sqrt(cc.rr);
-      // console.log(cc, t);
+      cc.edges = [];  // a place to map verts to edges
       verts.push(cc);
       function addEdge(p1, p2) {
          if (p1 > p2) { var t = p1; p1 = p2; p2 = t }
@@ -206,21 +205,22 @@ function dual(pts, triangles) {
          // must construct a point for the edge
          e.ts.push(verts.length);  // ...it'll be the next one which we're building now
          // First candidate is the midpoint on the edge.
-         var mid = midpoint(pts[e.p1], pts[e.p2]);
+         var end = midpoint(pts[e.p1], pts[e.p2]);
          // That's the right one if it's closer to either of the edge points than it is to the third
          // triangle point which is not on this edge
          var t1 = triangles[e.ts[0]];
          var p3 = [t1.p1, t1.p2, t1.p3].filter(function (p) { return p != e.p1 && p != e.p2 })[0];
          p3 = pts[p3];
-         if (dist2(mid, pts[e.p1]) < dist2(mid, p3)) {
-            verts.push(mid);
-         } else {
+         if (dist2(end, pts[e.p1]) > dist2(end, p3)) {
             // Must need to go the opposite way
             var c1 = verts[e.ts[0]];
-            var opp = subtract(scale(c1, 2), mid);
-            verts.push(opp);
+            end = subtract(scale(c1, 2), end);
          }
+         end.edges = [];
+         verts.push(end);
       }
+      verts[e.ts[0]].edges.push(es.length); // Point from verts...
+      verts[e.ts[1]].edges.push(es.length); // ...to edges
       es.push({p1:e.ts[0], p2:e.ts[1]});
    }
    return {vertices: verts, edges: es};

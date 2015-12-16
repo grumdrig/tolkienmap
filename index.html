@@ -21,6 +21,8 @@ html, body {
 // http://www.lord-of-the-rings.org/collections/maps/map6[1].jpg
 // Beleriand
 // https://atolkienistperspective.files.wordpress.com/2013/07/beleriand-map.jpg
+"use strict";
+
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
 var PI = Math.PI;
@@ -141,7 +143,7 @@ function handDrawnLine(p0, p1, eccentricity) {
 	for (var i = 1; i < nsegments; ++i) {
 		var t = i / nsegments;
 		var h = 15 * pow(t, 4) - 6 * pow(t, 5) - 10 * pow(t, 3);
-		pt = add(p0, scale(diff, h));
+		var pt = add(p0, scale(diff, h));
 		result.push(add(pt, scale(normal, crand(eccentricity))));
 	}
 	result.push(copy(p1));
@@ -300,7 +302,7 @@ function dump(label, arr) {
 
 CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
-	var R = 50;
+	var R = 80;
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	// pts = [{x:x,y:y},
@@ -311,18 +313,16 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	//pts = [{x:300,y:300},{x:200,y:250},{x:375,y:250}];
 	pts.sort(function (p1,p2) { return p1.x - p2.x });
 	var triangles = triangulate(pts);
-	dump("POINTS", pts);
-	dump("TRIANGLES", triangles);
 	ctx.strokeStyle = "#fff8f8";
-	triangles.forEach(function (t) {
+	if (false) triangles.forEach(function (t) {
 		ctx.beginPath();
-		ctx.doSpline(handDrawnLine(pts[t.p1], pts[t.p2]));
-		ctx.doSpline(handDrawnLine(pts[t.p2], pts[t.p3]), true);
-		ctx.doSpline(handDrawnLine(pts[t.p3], pts[t.p1]), true);
-		// ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
-		// ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
-		// ctx.lineTo(pts[t.p3].x, pts[t.p3].y);
-		// ctx.lineTo(pts[t.p1].x, pts[t.p1].y);
+		// ctx.doSpline(handDrawnLine(pts[t.p1], pts[t.p2]));
+		// ctx.doSpline(handDrawnLine(pts[t.p2], pts[t.p3]), true);
+		// ctx.doSpline(handDrawnLine(pts[t.p3], pts[t.p1]), true);
+		ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
+		ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
+		ctx.lineTo(pts[t.p3].x, pts[t.p3].y);
+		ctx.lineTo(pts[t.p1].x, pts[t.p1].y);
 		// ctx.fillStyle = "#"+(Math.random()*0xFFFFFF<<0).toString(16);
 		// ctx.fill();
 		ctx.stroke();
@@ -330,24 +330,39 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 
 	ctx.strokeStyle = "green";
 	var voi = dual(pts, triangles);
-	dump("VOI VERTS", voi.vertices);
-	dump("VOI EDGES", voi.edges);
 	voi.edges.forEach(function (e) {
 		ctx.beginPath();
-		ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
+		ctx.moveTo(voi.vertices[e.p1].x, voi.vertices[e.p1].y);
+		ctx.lineTo(voi.vertices[e.p2].x, voi.vertices[e.p2].y);
+		// ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
 		ctx.stroke();
 	});
 	ctx.strokeStyle = "black";
 
-	ctx.fillStyle = "red";
-	pts.forEach(function (p) {
-		ctx.fillRect(p.x, p.y, 6, 6);
-	});
+	// ctx.fillStyle = "red";
+	// pts.forEach(function (p) {
+	// 	ctx.fillRect(p.x, p.y, 6, 6);
+	// });
 
-	ctx.fillStyle = "#00f";
-	voi.vertices.forEach(function (p) {
-		ctx.fillRect(p.x, p.y, 6, 6);
-	});
+	// ctx.fillStyle = "#00f";
+	// voi.vertices.forEach(function (p) {
+	// 	ctx.fillRect(p.x, p.y, 6, 6);
+	// });
+
+	var path = astar(0, voi.vertices.length - 1,
+		function (i) {
+			var es = voi.vertices[i].edges;
+			var result = new Set();
+			for (var j = 0; j < es.length; ++j) {
+				var e = es[j];
+				result.add(i == e.p1 ? e.p2 : e.p1);
+			}
+			return result;
+		},
+		function (i,j) {
+			return distance(voi.vertices[i], voi.vertices[j]);
+		});
+	console.log(0, voi.vertices.length - 1, path);
 }
 
 function meander(p, n, d, a) {
@@ -380,8 +395,56 @@ function drawMap() {
 	// for (var i = 0; i < 100; ++i)
 	// 	ctx.doSpline(meander({x:W/2, y:0}, 10, H * 1.25, PI/2));
 	// ctx.stroke();
-	ctx.network(100, 100, W-200, H-200);
+	ctx.network(0, 0, W, H);
 }
+
+function astar(start, goal, neighbors, dist_between, heuristic_cost_estimate) {
+	if (!heuristic_cost_estimate) heuristic_cost_estimate = dist_between;
+    var ClosedSet = new Set();    	  // The set of nodes already evaluated.
+    var OpenSet = [start];    // The set of tentative nodes to be evaluated
+    var Came_From = {};    // The map of navigated nodes.
+
+    var g_score = {};  // map with default value of Infinity
+    g_score[start] = 0;    // Cost from start along best known path.
+    // Estimated total cost from start to goal through y.
+    var f_score = {};  // map with default value of Infinity
+    f_score[start] = heuristic_cost_estimate(start, goal);
+
+    while (OpenSet.length > 0) {
+    	OpenSet.sort(function (a,b) { return f_score[b] - f_score[a] });
+        var current = OpenSet.pop();
+        console.log(current);
+        if (current = goal) {
+        	// Reconstruct path
+    	    var total_path = [current];
+			while (current in Came_From) {
+			    current = Came_From[current];
+			    total_path.push(current);
+			}
+			return total_path;
+		}
+        ClosedSet.add(current);
+        var ns = neighbors(current);
+        console.log(ns);
+        for (let neighbor of ns) {
+            if (ClosedSet.has(neighbor))
+                continue;		// Ignore the neighbor which is already evaluated.
+            var tentative_g_score = g_score[current] + dist_between(current, neighbor) // length of this path.
+            if (OpenSet.indexOf(neighbor) == -1)	// Discover a new node
+                OpenSet.push(neighbor);
+            else if (tentative_g_score >= g_score[neighbor])
+                continue;		// This is not a better path.
+
+            // This path is the best until now. Record it!
+            Came_From[neighbor] = current;
+            g_score[neighbor] = tentative_g_score;
+            f_score[neighbor] = g_score[neighbor] + heuristic_cost_estimate(neighbor, goal);
+        }
+    }
+    searchFailed();
+}
+
+
 canvas.addEventListener("click", drawMap);
 drawMap();
 
