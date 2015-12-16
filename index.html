@@ -298,18 +298,21 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
 	var R = 50;
 	var N = w * h / (R * R * PI/2);
+	N = 10;
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	pts.sort(function (p1,p2) { return p1.x - p2.x });
 	var triangles = triangulate(pts);
 	triangles.forEach(function (t) {
 		ctx.beginPath();
 		ctx.doSpline(handDrawnLine(pts[t.p1], pts[t.p2]));
-		ctx.doSpline(handDrawnLine(pts[t.p2], pts[t.p3]));
-		ctx.doSpline(handDrawnLine(pts[t.p3], pts[t.p1]));
+		ctx.doSpline(handDrawnLine(pts[t.p2], pts[t.p3]), true);
+		ctx.doSpline(handDrawnLine(pts[t.p3], pts[t.p1]), true);
 		// ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
 		// ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
 		// ctx.lineTo(pts[t.p3].x, pts[t.p3].y);
 		// ctx.lineTo(pts[t.p1].x, pts[t.p1].y);
+		// ctx.fillStyle = "#"+(Math.random()*0xFFFFFF<<0).toString(16);
+		// ctx.fill();
 		ctx.stroke();
 	});
 
@@ -364,7 +367,7 @@ function drawMap() {
 	// for (var i = 0; i < 100; ++i)
 	// 	ctx.doSpline(meander({x:W/2, y:0}, 10, H * 1.25, PI/2));
 	// ctx.stroke();
-	ctx.network(W-300, 100, 200, 300);
+	ctx.network(100, 100, W-200, H-200);
 }
 canvas.addEventListener("click", drawMap);
 drawMap();
