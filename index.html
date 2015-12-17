@@ -275,7 +275,7 @@ function quasiRandomPointCloud(count, x, y, w, h) {
 
 	var pts = [];
 	for (var i = 0; i < count; i++)
-		pts.push(randomMostDistantPoint(1 + i/10, pts));
+		pts.push(randomMostDistantPoint(1 + i/100, pts));
 	return pts;
 }
 
@@ -331,27 +331,40 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 
 	var voi = dual(pts, triangles);
 
-	// ctx.strokeStyle = "green";
-	// voi.edges.forEach(function (e) {
-	// 	ctx.beginPath();
-	// 	ctx.moveTo(voi.vertices[e.p1].x, voi.vertices[e.p1].y);
-	// 	ctx.lineTo(voi.vertices[e.p2].x, voi.vertices[e.p2].y);
-	// 	// ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
-	// 	ctx.stroke();
-	// });
-	// ctx.strokeStyle = "black";
+	ctx.strokeStyle = "green";
+	voi.edges.forEach(function (e) {
+		ctx.beginPath();
+		ctx.moveTo(voi.vertices[e.p1].x, voi.vertices[e.p1].y);
+		ctx.lineTo(voi.vertices[e.p2].x, voi.vertices[e.p2].y);
+		// ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
+		ctx.stroke();
+	});
+	ctx.strokeStyle = "black";
 
-	// ctx.fillStyle = "red";
-	// pts.forEach(function (p) {
-	// 	ctx.fillRect(p.x, p.y, 6, 6);
-	// });
+	ctx.fillStyle = "pink";
+	pts.forEach(function (p) {
+		ctx.fillRect(p.x, p.y, 6, 6);
+	});
 
 	// ctx.fillStyle = "#00f";
 	// voi.vertices.forEach(function (p) {
 	// 	ctx.fillRect(p.x, p.y, 6, 6);
 	// });
 
-	var path = astar(0, voi.vertices.length - 1,
+	var tl = 0, dtl = Number.POSITIVE_INFINITY;
+	var br = voi.vertices.length - 1, dbr = Number.POSITIVE_INFINITY;
+	for (var i = 0; i < voi.vertices.length; ++i) {
+		var vi = voi.vertices[i];
+		if (vi.y <= 0 && abs(vi.x - W/8) < dtl) {
+			tl = i;
+			dtl = abs(vi.x - W/8);
+		}
+		if (vi.y >= H && abs(vi.x - W/2) < dbr) {
+			br = i;
+			dbr = abs(vi.x - W/2);
+		}
+	}
+	var path = astar(tl, br,
 		function (i) {
 			var es = voi.vertices[i].edges;
 			var result = new Set();
@@ -362,11 +375,16 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			return result;
 		},
 		function (i,j) {
-			return distance(voi.vertices[i], voi.vertices[j]);
+			var d = distance(voi.vertices[i], voi.vertices[j]);
+			d += 6000 / distance(voi.vertices[i], {x:W/3,y:H/4});
+			d += 6000 / distance(voi.vertices[i], {x:W/3,y:H/4});
+			d += 3000 / distance(voi.vertices[j], {x:W/3,y:H});
+			d += 3000 / distance(voi.vertices[j], {x:W/3,y:H});
+			return d;
 		});
 	for (var i = 0; i < path.length - 1; i++)
-		ctx.doSpline(handDrawnLine(voi.vertices[path[i]], voi.vertices[path[i+1]]), i!=0);
-	ctx.strokeStyle = "red";
+		ctx.doSpline(handDrawnLine(voi.vertices[path[i]], voi.vertices[path[i+1]], 0), i!=0);
+	ctx.strokeStyle = "black";
 	ctx.stroke();
 }
 
