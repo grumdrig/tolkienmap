@@ -2,6 +2,18 @@
 
 "use strict";
 
+var abs = Math.abs;
+
+function midpoint(v1, v2) {
+   return {x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2};
+}
+
+function dist2(p, q) {
+   var dx = p.x - q.x, dy = p.y - q.y;
+   return dx*dx + dy*dy;
+}
+
+
 // Triangulation subroutine
 // Takes as input vertices in array seeds, which will be sorted in increasing x values, eg:
 // v.sort(function (p1, p2) { return p1.x - p2.x });
@@ -111,9 +123,9 @@ function Triangulation(seeds) {
    seeds.pop();
    seeds.pop();
    seeds.pop();
-}
 
-var fabs = Math.abs;
+   this.computeDual();
+}
 
 /*
    Return { inside: true } if a point (xp,yp) is inside the circumcircle made up
@@ -126,22 +138,22 @@ function circumCircle(p1, p2, p3) {
    var m1,m2,mx1,mx2,my1,my2;
    var dx,dy,drsqr;
 
-   var fabsy1y2 = fabs(p1.y - p2.y);
-   var fabsy2y3 = fabs(p2.y - p3.y);
+   var dy12 = abs(p1.y - p2.y);
+   var dy23 = abs(p2.y - p3.y);
 
    /* Check for coincident points */
-   if (fabsy1y2 < EPSILON && fabsy2y3 < EPSILON)
+   if (dy12 < EPSILON && dy23 < EPSILON)
        return { x:p1.x, y:p1.y, r:0 };
 
    var xc, yc, rsqr;
 
-   if (fabsy1y2 < EPSILON) {
+   if (dy12 < EPSILON) {
       var m2 = - (p3.x - p2.x) / (p3.y - p2.y);
       var mx2 = (p2.x + p3.x) / 2;
       var my2 = (p2.y + p3.y) / 2;
       xc = (p2.x + p1.x) / 2;
       yc = m2 * (xc - mx2) + my2;
-   } else if (fabsy2y3 < EPSILON) {
+   } else if (dy23 < EPSILON) {
       var m1 = - (p2.x - p1.x) / (p2.y - p1.y);
       var mx1 = (p1.x + p2.x) / 2;
       var my1 = (p1.y + p2.y) / 2;
@@ -155,7 +167,7 @@ function circumCircle(p1, p2, p3) {
       var my1 = (p1.y + p2.y) / 2;
       var my2 = (p2.y + p3.y) / 2;
       xc = (m1 * mx1 - m2 * mx2 + my2 - my1) / (m1 - m2);
-      if (fabsy1y2 > fabsy2y3) {
+      if (dy12 > dy23) {
          yc = m1 * (xc - mx1) + my1;
       } else {
          yc = m2 * (xc - mx2) + my2;
@@ -175,13 +187,13 @@ function inCircle(xp, yp, cc) {
    return (dsqr - cc.rr) <= EPSILON;
 }
 
-function dual(pts, triangles) {
+Triangulation.prototype.computeDual = function () {
    var nodes = [];
    var edges = {};
    function key(p1, p2) { return p1 + "," + p2 }
-   for (var i = 0; i < triangles.length; ++i) {
-      var t = triangles[i];
-      var cc = circumCircle(pts[t.p1], pts[t.p2], pts[t.p3]);
+   for (var i = 0; i < this.triangles.length; ++i) {
+      var t = this.triangles[i];
+      var cc = circumCircle(this.seeds[t.p1], this.seeds[t.p2], this.seeds[t.p3]);
       cc.edges = [];  // a place to map nodes to edges
       nodes.push(cc);
       function addEdge(p1, p2) {
@@ -207,13 +219,13 @@ function dual(pts, triangles) {
          // must construct a point for the edge
          e.ts.push(nodes.length);  // ...it'll be the next one which we're building now
          // First candidate is the midpoint on the edge.
-         var end = midpoint(pts[e.p1], pts[e.p2]);
+         var end = midpoint(this.seeds[e.p1], this.seeds[e.p2]);
          // That's the right one if it's closer to either of the edge points than it is to the third
          // triangle point which is not on this edge
-         var t1 = triangles[e.ts[0]];
+         var t1 = this.triangles[e.ts[0]];
          var p3 = [t1.p1, t1.p2, t1.p3].filter(function (p) { return p != e.p1 && p != e.p2 })[0];
-         p3 = pts[p3];
-         if (dist2(end, pts[e.p1]) > dist2(end, p3)) {
+         p3 = this.seeds[p3];
+         if (dist2(end, this.seeds[e.p1]) > dist2(end, p3)) {
             // Must need to go the opposite way
             var c1 = nodes[e.ts[0]];
             end = subtract(scale(c1, 2), end);
@@ -225,16 +237,7 @@ function dual(pts, triangles) {
       nodes[e.ts[1]].edges.push(es.length); // ...to edges
       es.push({p1:e.ts[0], p2:e.ts[1]});
    }
-   return {nodes: nodes, edges: es};
+   this.nodes = nodes;
+   this.edges = es;
 }
-
-function midpoint(v1, v2) {
-   return {x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2};
-}
-
-function dist2(p, q) {
-   var dx = p.x - q.x, dy = p.y - q.y;
-   return dx*dx + dy*dy;
-}
-
 

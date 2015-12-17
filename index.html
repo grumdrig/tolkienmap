@@ -305,11 +305,12 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var R = 20;
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
-	var triangles = (new Triangulation(pts)).triangles;
-	ctx.strokeStyle = "#fff8f8";
+	var voi = new Triangulation(pts);
 
 	var SHOWALL = true;
-	if (SHOWALL) triangles.forEach(function (t) {
+
+	ctx.strokeStyle = "#fee";
+	if (SHOWALL) voi.triangles.forEach(function (t) {
 		ctx.beginPath();
 		ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
 		ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
@@ -320,9 +321,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ctx.stroke();
 	});
 
-	var voi = dual(pts, triangles);
-
-	ctx.strokeStyle = "green";
+	ctx.strokeStyle = "#afa";
 	if (SHOWALL) voi.edges.forEach(function (e) {
 		ctx.beginPath();
 		ctx.moveTo(voi.nodes[e.p1].x, voi.nodes[e.p1].y);
