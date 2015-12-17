@@ -1,29 +1,32 @@
 // http://paulbourke.net/papers/triangulate/
 
+"use strict";
+
 // Triangulation subroutine
-// Takes as input vertices in array pxyz, which must be sorted in increasing x values, eg:
+// Takes as input vertices in array seeds, which will be sorted in increasing x values, eg:
 // v.sort(function (p1, p2) { return p1.x - p2.x });
 // Returned is a list of triangular faces in the array
 // These triangles are arranged in a consistent clockwise order.
-function triangulate(pxyz) {
-   var nv = pxyz.length;
+function Triangulation(seeds) {
+   seeds.sort(function (p1,p2) { return p1.x - p2.x });
+
+   this.seeds = seeds;
+   var nv = seeds.length;
 
    function triangle(p1, p2, p3) { return {p1:p1, p2:p2, p3:p3, complete:false} }
    function edge(p1, p2) { return {p1:p1, p2:p2} }
 
-   var v = [];  // of triangle(...)
+   this.triangles = [];
 
    // Find the maximum and minimum vertex bounds.
    // This is to allow calculation of the bounding triangle
-   var xmin = pxyz[0].x;
-   var ymin = pxyz[0].y;
-   var xmax = xmin;
+   var xmin = seeds[0].x;
+   var ymin = seeds[0].y;
+   var xmax = seeds[nv - 1].x;
    var ymax = ymin;
    for (var i = 1; i < nv; i++) {
-      if (pxyz[i].x < xmin) xmin = pxyz[i].x;
-      if (pxyz[i].x > xmax) xmax = pxyz[i].x;
-      if (pxyz[i].y < ymin) ymin = pxyz[i].y;
-      if (pxyz[i].y > ymax) ymax = pxyz[i].y;
+      if (seeds[i].y < ymin) ymin = seeds[i].y;
+      if (seeds[i].y > ymax) ymax = seeds[i].y;
    }
    var dx = xmax - xmin;
    var dy = ymax - ymin;
@@ -36,34 +39,34 @@ function triangulate(pxyz) {
    // The supertriangle coordinates are added to the end of the
    // vertex list. The supertriangle is the first triangle in
    // the triangle list.
-   pxyz.push({x: xmid - 20 * dmax, y: ymid - dmax});
-   pxyz.push({x: xmid,             y: ymid + 20 * dmax});
-   pxyz.push({x: xmid + 20 * dmax, y: ymid - dmax});
-   v.push(triangle(nv, nv+1, nv+2));
+   seeds.push({x: xmid - 20 * dmax, y: ymid - dmax});
+   seeds.push({x: xmid,             y: ymid + 20 * dmax});
+   seeds.push({x: xmid + 20 * dmax, y: ymid - dmax});
+   this.triangles.push(triangle(nv, nv+1, nv+2));
 
    // Include each point one at a time into the existing mesh
    for (var i = 0; i < nv; i++) {
-      var p = pxyz[i];
+      var p = seeds[i];
       var edges = [];  // of edge(...)
 
       // Set up the edge buffer.
       // If the point (xp,yp) lies inside the circumcircle then the
       // three edges of that triangle are added to the edge buffer
       // and that triangle is removed.
-      for (var j = 0; j < v.length; j++) {
-         if (v[j].complete)
+      for (var j = 0; j < this.triangles.length; j++) {
+         if (this.triangles[j].complete)
             continue;
-         var p1 = pxyz[v[j].p1];
-         var p2 = pxyz[v[j].p2];
-         var p3 = pxyz[v[j].p3];
+         var p1 = seeds[this.triangles[j].p1];
+         var p2 = seeds[this.triangles[j].p2];
+         var p3 = seeds[this.triangles[j].p3];
          var cc = circumCircle(p1, p2, p3);
          if (cc.x < p.x && ((p.x-cc.x)*(p.x-cc.x)) > cc.rr)
-				v[j].complete = true;
+				this.triangles[j].complete = true;
          if (inCircle(p.x, p.y, cc)) {
-            edges.push(edge(v[j].p1, v[j].p2));
-            edges.push(edge(v[j].p2, v[j].p3));
-            edges.push(edge(v[j].p3, v[j].p1));
-            v.splice(j, 1);
+            edges.push(edge(this.triangles[j].p1, this.triangles[j].p2));
+            edges.push(edge(this.triangles[j].p2, this.triangles[j].p3));
+            edges.push(edge(this.triangles[j].p3, this.triangles[j].p1));
+            this.triangles.splice(j, 1);
             j--;
          }
       }
@@ -95,20 +98,19 @@ function triangulate(pxyz) {
       for (var j = 0; j < edges.length; j++) {
          if (edges[j].p1 < 0 || edges[j].p2 < 0)
             continue;
-         v.push(triangle(edges[j].p1, edges[j].p2, i));
+         this.triangles.push(triangle(edges[j].p1, edges[j].p2, i));
       }
    }
 
    // Remove triangles with supertriangle vertices
-   v = v.filter(function (t) {
+   this.triangles = this.triangles.filter(function (t) {
       return t.p1 < nv && t.p2 < nv && t.p3 < nv;
    });
 
-   pxyz.pop();
-   pxyz.pop();
-   pxyz.pop();
-
-   return v;
+   // Remove the supertriangle vertices
+   seeds.pop();
+   seeds.pop();
+   seeds.pop();
 }
 
 var fabs = Math.abs;
@@ -131,7 +133,7 @@ function circumCircle(p1, p2, p3) {
    if (fabsy1y2 < EPSILON && fabsy2y3 < EPSILON)
        return { x:p1.x, y:p1.y, r:0 };
 
-   var cx, yc, rsqr;
+   var xc, yc, rsqr;
 
    if (fabsy1y2 < EPSILON) {
       var m2 = - (p3.x - p2.x) / (p3.y - p2.y);
@@ -174,14 +176,14 @@ function inCircle(xp, yp, cc) {
 }
 
 function dual(pts, triangles) {
-   var verts = [];
+   var nodes = [];
    var edges = {};
    function key(p1, p2) { return p1 + "," + p2 }
    for (var i = 0; i < triangles.length; ++i) {
       var t = triangles[i];
       var cc = circumCircle(pts[t.p1], pts[t.p2], pts[t.p3]);
-      cc.edges = [];  // a place to map verts to edges
-      verts.push(cc);
+      cc.edges = [];  // a place to map nodes to edges
+      nodes.push(cc);
       function addEdge(p1, p2) {
          if (p1 > p2) { var t = p1; p1 = p2; p2 = t }
          var k = key(p1, p2);
@@ -194,7 +196,7 @@ function dual(pts, triangles) {
    }
    for (var i = 0; i < edges.length; ++i) {
       var e = edges[i];
-      edges[i] = {p1: verts[e.ts[0]], p2: verts[e.ts[1]]};
+      edges[i] = {p1: nodes[e.ts[0]], p2: nodes[e.ts[1]]};
    }
 
    var es = [];
@@ -203,7 +205,7 @@ function dual(pts, triangles) {
       if (e.ts.length == 1) {
          // This edge is on the outside, w/o a triangle on the other side, so we
          // must construct a point for the edge
-         e.ts.push(verts.length);  // ...it'll be the next one which we're building now
+         e.ts.push(nodes.length);  // ...it'll be the next one which we're building now
          // First candidate is the midpoint on the edge.
          var end = midpoint(pts[e.p1], pts[e.p2]);
          // That's the right one if it's closer to either of the edge points than it is to the third
@@ -213,17 +215,17 @@ function dual(pts, triangles) {
          p3 = pts[p3];
          if (dist2(end, pts[e.p1]) > dist2(end, p3)) {
             // Must need to go the opposite way
-            var c1 = verts[e.ts[0]];
+            var c1 = nodes[e.ts[0]];
             end = subtract(scale(c1, 2), end);
          }
          end.edges = [];
-         verts.push(end);
+         nodes.push(end);
       }
-      verts[e.ts[0]].edges.push(es.length); // Point from verts...
-      verts[e.ts[1]].edges.push(es.length); // ...to edges
+      nodes[e.ts[0]].edges.push(es.length); // Point from nodes...
+      nodes[e.ts[1]].edges.push(es.length); // ...to edges
       es.push({p1:e.ts[0], p2:e.ts[1]});
    }
-   return {vertices: verts, edges: es};
+   return {nodes: nodes, edges: es};
 }
 
 function midpoint(v1, v2) {

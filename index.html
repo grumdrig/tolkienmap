@@ -305,20 +305,12 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var R = 20;
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
-	// pts = [{x:x,y:y},
-	// {x:x+w/2,y:y+h},
-	// //{x:x+w,y},
-	// //{x:x, y:y+h},
-	// {x:w/2,y:h/2}];
-	//pts = [{x:300,y:300},{x:200,y:250},{x:375,y:250}];
-	pts.sort(function (p1,p2) { return p1.x - p2.x });
-	var triangles = triangulate(pts);
+	var triangles = (new Triangulation(pts)).triangles;
 	ctx.strokeStyle = "#fff8f8";
-	if (false) triangles.forEach(function (t) {
+
+	var SHOWALL = true;
+	if (SHOWALL) triangles.forEach(function (t) {
 		ctx.beginPath();
-		// ctx.doSpline(handDrawnLine(pts[t.p1], pts[t.p2]));
-		// ctx.doSpline(handDrawnLine(pts[t.p2], pts[t.p3]), true);
-		// ctx.doSpline(handDrawnLine(pts[t.p3], pts[t.p1]), true);
 		ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
 		ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
 		ctx.lineTo(pts[t.p3].x, pts[t.p3].y);
@@ -328,33 +320,31 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ctx.stroke();
 	});
 
-
 	var voi = dual(pts, triangles);
 
 	ctx.strokeStyle = "green";
-	if (false) voi.edges.forEach(function (e) {
+	if (SHOWALL) voi.edges.forEach(function (e) {
 		ctx.beginPath();
-		ctx.moveTo(voi.vertices[e.p1].x, voi.vertices[e.p1].y);
-		ctx.lineTo(voi.vertices[e.p2].x, voi.vertices[e.p2].y);
-		// ctx.doSpline(handDrawnLine(voi.vertices[e.p1], voi.vertices[e.p2]));
+		ctx.moveTo(voi.nodes[e.p1].x, voi.nodes[e.p1].y);
+		ctx.lineTo(voi.nodes[e.p2].x, voi.nodes[e.p2].y);
 		ctx.stroke();
 	});
 	ctx.strokeStyle = "#000";
 
 	ctx.fillStyle = "pink";
-	if (false) pts.forEach(function (p) {
+	if (SHOWALL) pts.forEach(function (p) {
 		ctx.fillRect(p.x, p.y, 6, 6);
 	});
 
-	// ctx.fillStyle = "#00f";
-	// voi.vertices.forEach(function (p) {
-	// 	ctx.fillRect(p.x, p.y, 6, 6);
-	// });
+	ctx.fillStyle = "#00f";
+	if (SHOWALL) voi.nodes.forEach(function (p) {
+		ctx.fillRect(p.x, p.y, 2, 2);
+	});
 
 	var tl = 0, dtl = Number.POSITIVE_INFINITY;
-	var br = voi.vertices.length - 1, dbr = Number.POSITIVE_INFINITY;
-	for (var i = 0; i < voi.vertices.length; ++i) {
-		var vi = voi.vertices[i];
+	var br = voi.nodes.length - 1, dbr = Number.POSITIVE_INFINITY;
+	for (var i = 0; i < voi.nodes.length; ++i) {
+		var vi = voi.nodes[i];
 		if (vi.y <= 0 && abs(vi.x - W/8) < dtl) {
 			tl = i;
 			dtl = abs(vi.x - W/8);
@@ -366,7 +356,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	}
 	var path = astar(tl, br,
 		function (i) {
-			var es = voi.vertices[i].edges;
+			var es = voi.nodes[i].edges;
 			var result = new Set();
 			for (var j = 0; j < es.length; ++j) {
 				var e = voi.edges[es[j]];
@@ -375,14 +365,14 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			return result;
 		},
 		function (i,j) {
-			var d = distance(voi.vertices[i], voi.vertices[j]);
-			d += 6000 / distance(voi.vertices[i], {x:W/3,y:H/4});
-			d += 6000 / distance(voi.vertices[i], {x:W/3,y:H/4});
-			d += 3000 / distance(voi.vertices[j], {x:W/3,y:H});
-			d += 3000 / distance(voi.vertices[j], {x:W/3,y:H});
+			var d = distance(voi.nodes[i], voi.nodes[j]);
+			d += 6000 / distance(voi.nodes[i], {x:W/3,y:H/4});
+			d += 6000 / distance(voi.nodes[i], {x:W/3,y:H/4});
+			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
+			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
 			return d;
 		});
-	ctx.doSpline(path.map(p => voi.vertices[p]));
+	ctx.doSpline(path.map(p => voi.nodes[p]));
 	ctx.strokeStyle = "#000";
 	ctx.stroke();
 }
