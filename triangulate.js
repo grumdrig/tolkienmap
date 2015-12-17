@@ -241,3 +241,48 @@ Triangulation.prototype.computeDual = function () {
    this.edges = es;
 }
 
+Triangulation.prototype.findPath = function (start, goal, neighbors, dist_between, heuristic_cost_estimate) {
+   if (!heuristic_cost_estimate)
+      heuristic_cost_estimate = (i,j) => distance(this.nodes[i], this.nodes[j]);
+    var ClosedSet = new Set();         // The set of nodes already evaluated.
+    var OpenSet = [start];    // The set of tentative nodes to be evaluated
+    var Came_From = {};    // The map of navigated nodes.
+
+    var g_score = {};  // map with default value of Infinity
+    g_score[start] = 0;    // Cost from start along best known path.
+    // Estimated total cost from start to goal through y.
+    var f_score = {};  // map with default value of Infinity
+    f_score[start] = heuristic_cost_estimate(start, goal);
+
+    while (OpenSet.length > 0) {
+       OpenSet.sort(function (a,b) { return f_score[b] - f_score[a] });
+        var current = OpenSet.pop();
+        if (current == goal) {
+           // Reconstruct path
+           var total_path = [current];
+         while (current in Came_From) {
+             current = Came_From[current];
+             total_path.push(current);
+         }
+         return total_path;
+      }
+        ClosedSet.add(current);
+        var ns = neighbors(current);
+        for (let neighbor of ns) {
+            if (ClosedSet.has(neighbor))
+                continue;      // Ignore the neighbor which is already evaluated.
+            var tentative_g_score = g_score[current] + dist_between(current, neighbor) // length of this path.
+            if (OpenSet.indexOf(neighbor) == -1)   // Discover a new node
+                OpenSet.push(neighbor);
+            else if (tentative_g_score >= g_score[neighbor])
+                continue;      // This is not a better path.
+
+            // This path is the best until now. Record it!
+            Came_From[neighbor] = current;
+            g_score[neighbor] = tentative_g_score;
+            f_score[neighbor] = g_score[neighbor] + heuristic_cost_estimate(neighbor, goal);
+        }
+    }
+    throw "findPath failed";
+}
+
