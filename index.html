@@ -36,6 +36,12 @@ var max = Math.max;
 var round = Math.round;
 var rand = Math.random;
 function crand(scale) { return (rand() - 0.5) * scale }
+function pick(a) {
+	if (typeof a == 'number')
+		return rand() * a >> 0;
+	else
+		return a[rand() * a.length >> 0];
+}
 
 var body = document.body;
 var canvas = body.$("canvas#map");
@@ -121,17 +127,6 @@ function bigOneInMiddle(ctx) {
 	ctx.drawImage(can, c.x - DW*s*m, c.y - DH*s*m/2, DW*s*m*2, DH*s*m);
 	// mountain(ctx, {x:c.x, y:c.y - h/2}, w, h);
 }
-
-
-function normalize(p)   { return scale(p, 1 / magnitude(p)) }
-function magnitude(p)   { return sqrt(p.x * p.x + p.y * p.y) }
-function subtract(p, q) { return {x: p.x - q.x, y: p.y - q.y} }
-function add(p, q)      { return {x: p.x + q.x, y: p.y + q.y} }
-function scale(p, s)    { return {x: p.x * s,   y: p.y * s} }
-function copy(p)        { return {x: p.x, y: p.y} }
-function average(p, q)  { return scale(add(p,q), 1/2) }
-function distance(p, q) { return magnitude(subtract(p, q)) }
-
 
 function handDrawnLine(p0, p1, eccentricity) {
 	if (typeof eccentricity == 'undefined') eccentricity = 5;
@@ -307,6 +302,19 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	var voi = new Triangulation(pts);
 
+	// Trace in a mountain range
+	var active = pick(voi.seeds.length);
+	console.log(voi);
+	for (var i = 0; i < 10; ++i) {
+		voi.seeds[active].terrain = 'mountain';
+		console.log(active);
+		var s = voi.seeds[active];
+		var ns = Array.from(s.neighbors).filter(function (n) { return !voi.seeds[n].terrain });
+		active = pick(ns);
+		ns.map(function (n) { voi.seeds[n].terrain = 'foothill' });
+	}
+
+
 	var SHOWALL = true;
 
 	ctx.strokeStyle = "#fee";
@@ -330,8 +338,13 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	});
 	ctx.strokeStyle = "#000";
 
-	ctx.fillStyle = "pink";
-	if (SHOWALL) pts.forEach(function (p) {
+	if (SHOWALL) voi.seeds.forEach(function (p) {
+		if (p.terrain == 'mountain')
+			ctx.fillStyle = '#080';
+		else if (p.terrain == 'foothill')
+			ctx.fillStyle = '#8f8';
+		else
+			ctx.fillStyle = "pink";
 		ctx.fillRect(p.x, p.y, 6, 6);
 	});
 
@@ -340,6 +353,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ctx.fillRect(p.x, p.y, 2, 2);
 	});
 
+	// Find coastline endpoints
 	var tl = 0, dtl = Number.POSITIVE_INFINITY;
 	var br = voi.nodes.length - 1, dbr = Number.POSITIVE_INFINITY;
 	for (var i = 0; i < voi.nodes.length; ++i) {
@@ -353,7 +367,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			dbr = abs(vi.x - W/2);
 		}
 	}
-	var path = voi.findPath(tl, br,
+	var coastline = voi.findPath(tl, br,
 		function (i) {
 			var es = voi.nodes[i].edges;
 			var result = new Set();
@@ -371,7 +385,8 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
 			return d;
 		});
-	ctx.doSpline(path.map(p => voi.nodes[p]));
+
+	ctx.doSpline(coastline.map(p => voi.nodes[p]));
 	ctx.strokeStyle = "#000";
 	ctx.stroke();
 }
@@ -411,7 +426,8 @@ function drawMap() {
 }
 
 canvas.addEventListener("click", drawMap);
-drawMap();
+window.addEventListener("load", drawMap);
+// drawMap();
 
 </script>
 </body>

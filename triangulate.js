@@ -4,14 +4,16 @@
 
 var abs = Math.abs;
 
-function midpoint(v1, v2) {
-   return {x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2};
-}
-
-function dist2(p, q) {
-   var dx = p.x - q.x, dy = p.y - q.y;
-   return dx*dx + dy*dy;
-}
+function normalize(p)   { return scale(p, 1 / magnitude(p)) }
+function magnitude(p)   { return sqrt(p.x * p.x + p.y * p.y) }
+function subtract(p, q) { return {x: p.x - q.x, y: p.y - q.y} }
+function add(p, q)      { return {x: p.x + q.x, y: p.y + q.y} }
+function scale(p, s)    { return {x: p.x * s,   y: p.y * s} }
+function copy(p)        { return {x: p.x, y: p.y} }
+function average(p, q)  { return scale(add(p,q), 1/2) }
+function distance(p, q) { return magnitude(subtract(p, q)) }
+function midpoint(v1, v2) { return {x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2}; }
+function dist2(p, q) { var dx = p.x - q.x, dy = p.y - q.y; return dx*dx + dy*dy; }
 
 
 // Triangulation subroutine
@@ -28,7 +30,7 @@ function Triangulation(seeds) {
    function triangle(p1, p2, p3) { return {p1:p1, p2:p2, p3:p3, complete:false} }
    function edge(p1, p2) { return {p1:p1, p2:p2} }
 
-   this.triangles = [];
+   var triangles = this.triangles = [];
 
    // Find the maximum and minimum vertex bounds.
    // This is to allow calculation of the bounding triangle
@@ -54,7 +56,7 @@ function Triangulation(seeds) {
    seeds.push({x: xmid - 20 * dmax, y: ymid - dmax});
    seeds.push({x: xmid,             y: ymid + 20 * dmax});
    seeds.push({x: xmid + 20 * dmax, y: ymid - dmax});
-   this.triangles.push(triangle(nv, nv+1, nv+2));
+   triangles.push(triangle(nv, nv+1, nv+2));
 
    // Include each point one at a time into the existing mesh
    for (var i = 0; i < nv; i++) {
@@ -65,20 +67,20 @@ function Triangulation(seeds) {
       // If the point (xp,yp) lies inside the circumcircle then the
       // three edges of that triangle are added to the edge buffer
       // and that triangle is removed.
-      for (var j = 0; j < this.triangles.length; j++) {
-         if (this.triangles[j].complete)
+      for (var j = 0; j < triangles.length; j++) {
+         if (triangles[j].complete)
             continue;
-         var p1 = seeds[this.triangles[j].p1];
-         var p2 = seeds[this.triangles[j].p2];
-         var p3 = seeds[this.triangles[j].p3];
+         var p1 = seeds[triangles[j].p1];
+         var p2 = seeds[triangles[j].p2];
+         var p3 = seeds[triangles[j].p3];
          var cc = circumCircle(p1, p2, p3);
          if (cc.x < p.x && ((p.x-cc.x)*(p.x-cc.x)) > cc.rr)
-				this.triangles[j].complete = true;
+				triangles[j].complete = true;
          if (inCircle(p.x, p.y, cc)) {
-            edges.push(edge(this.triangles[j].p1, this.triangles[j].p2));
-            edges.push(edge(this.triangles[j].p2, this.triangles[j].p3));
-            edges.push(edge(this.triangles[j].p3, this.triangles[j].p1));
-            this.triangles.splice(j, 1);
+            edges.push(edge(triangles[j].p1, triangles[j].p2));
+            edges.push(edge(triangles[j].p2, triangles[j].p3));
+            edges.push(edge(triangles[j].p3, triangles[j].p1));
+            triangles.splice(j, 1);
             j--;
          }
       }
@@ -110,12 +112,12 @@ function Triangulation(seeds) {
       for (var j = 0; j < edges.length; j++) {
          if (edges[j].p1 < 0 || edges[j].p2 < 0)
             continue;
-         this.triangles.push(triangle(edges[j].p1, edges[j].p2, i));
+         triangles.push(triangle(edges[j].p1, edges[j].p2, i));
       }
    }
 
    // Remove triangles with supertriangle vertices
-   this.triangles = this.triangles.filter(function (t) {
+   triangles = this.triangles = triangles.filter(function (t) {
       return t.p1 < nv && t.p2 < nv && t.p3 < nv;
    });
 
@@ -125,7 +127,21 @@ function Triangulation(seeds) {
    seeds.pop();
 
    this.computeDual();
+
+   // Note seed neighbors
+   seeds.map(function (s) { s.neighbors = [] });
+   triangles.map(function (t) {
+      seeds[t.p1].neighbors.push(t.p2);
+      seeds[t.p1].neighbors.push(t.p3);
+      seeds[t.p2].neighbors.push(t.p1);
+      seeds[t.p2].neighbors.push(t.p3);
+      seeds[t.p3].neighbors.push(t.p1);
+      seeds[t.p3].neighbors.push(t.p2);
+   });
+
+   // VOI = this;
 }
+// var VOI;
 
 /*
    Return { inside: true } if a point (xp,yp) is inside the circumcircle made up
