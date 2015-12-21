@@ -295,6 +295,8 @@ function dump(label, arr) {
 	for (var i = 0; i < arr.length; ++i) console.log(label, i, arr[i]);
 }
 
+Array.prototype.has = function (e) { return this.indexOf(e) >= 0 };
+
 CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
 	var R = 20;
@@ -303,17 +305,22 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var voi = new Triangulation(pts);
 
 	// Trace in a mountain range
-	var active = pick(voi.seeds.length);
-	console.log(voi);
-	for (var i = 0; i < 10; ++i) {
-		voi.seeds[active].terrain = 'mountain';
-		console.log(active);
-		var s = voi.seeds[active];
-		var ns = Array.from(s.neighbors).filter(function (n) { return !voi.seeds[n].terrain });
-		active = pick(ns);
+	var active = [pick(voi.seeds.length)];
+	for (var i = 0; i < 30; ++i) {
+		active.map(function(a) { voi.seeds[a].terrain = 'mountain' });
+		var ns = active.reduce(function (p, c) { return p.concat(voi.seeds[c].neighbors) }, []);
+		ns = Array.from(new Set(ns)).filter(function (n) { return !voi.seeds[n].terrain });
+		if (ns.length == 0) break;
+		active = [pick(ns)];
+		for (var k = 0; k < 1; ++k) {
+			var eligible = ns.filter(function (n) {
+				return !active.has(n) && voi.seeds[active[0]].neighbors.has(n)
+			});
+			if (eligible.length == 0) break;
+			active.push(pick(eligible));
+		}
 		ns.map(function (n) { voi.seeds[n].terrain = 'foothill' });
 	}
-
 
 	var SHOWALL = true;
 
