@@ -222,6 +222,7 @@ Triangulation.prototype.computeDual = function () {
       addEdge(t.p2, t.p3);
       addEdge(t.p3, t.p1);
    }
+   // TODO: pretty sure this is a no-op
    for (var i = 0; i < edges.length; ++i) {
       var e = edges[i];
       edges[i] = {p1: nodes[e.ts[0]], p2: nodes[e.ts[1]]};

@@ -31,6 +31,7 @@ var sqrt = Math.sqrt;
 var cos = Math.cos;
 var sin = Math.sin;
 var abs = Math.abs;
+var ceil = Math.ceil;
 var min = Math.min;
 var max = Math.max;
 var round = Math.round;
@@ -104,10 +105,11 @@ CanvasRenderingContext2D.prototype.crosshatchRect = function (x, y, w, h) {
 
 CanvasRenderingContext2D.prototype.mountainRange = function (DW, DH) {
 	var x = this.canvas.width / 2;
-    N = 50;
+    let N = 50;
     for (var i = 0; i < N; ++i) {
       x = x + crand(100);
-      y = (this.canvas.height - 64) * i / N + 16 * rand();
+      let y = (this.canvas.height - 64) * i / N + 16 * rand();
+      // console.log(y);
       this.mountain({x:x, y:y}, DW * 2, DH, true);
     }
   }
@@ -422,15 +424,104 @@ function drawMap() {
 	var DW = 20, DH = DW;
 	// ctx.fieldOfMountains(DW, DH);
 	// ctx.bigOneInMiddle(30, 30);
-	// ctx.mountainRange(DW, DH);
-	// ctx.mountainRange(DW, DH);
-	// ctx.mountainRange(DW, DH);
+	for (var i = 0; i < 1; i++) ctx.mountainRange(DW, DH);
 	// ctx.forest(100, 100, 200, 300);
 	// for (var i = 0; i < 100; ++i)
 	// 	ctx.doSpline(meander({x:W/2, y:0}, 10, H * 1.25, PI/2));
 	// ctx.stroke();
 	ctx.network(0, 0, W, H);
+
+	// Noise function is here for future use depending on how map gen is going to work in the long run
+	// It isn't used now
+	// Noise(20);
 }
+
+function Noise(scale) {
+	// Midpoint displacement noise.
+	// The generated noise is scaled down in res
+	var scaledW = ceil(W / scale);
+	var scaledH = ceil(H / scale);
+	var points = new Float32Array(scaledW * scaledH);
+	function pt(x, y, v) { // get or set a value in the 2d array
+		var i = scaledW * y + x;
+		if (typeof v != 'undefined') {
+			points[i] = v;
+		} else if (x < 0) {
+			return 0;
+		} else if (x >= scaledW) {
+			return 1;
+		} else if (y < 0 || y >= scaledH) {
+			return x / scaledW;
+		} else {
+			return points[i];
+		}
+	}
+
+	function bishopavg(x, y, d) {
+	return (pt(x-d,y-d) + pt(x+d,y-d) +
+	        pt(x-d,y+d) + pt(x+d,y+d)) / 4;
+	}
+
+	function rookavg(x, y, d) {
+	return (      pt(x,y-d) +
+	        pt(x-d,y) + pt(x+d,y) +
+	              pt(x,y+d)) / 4;
+	}
+
+	var persistence = 1/2;
+	var SQRT2 = sqrt(2);
+
+	// Find largest power of 2 smaller than either dimension
+    var n = 1;
+    while (2*n < scaledW && 2*n < scaledH) n *= 2;
+
+    // Fill in initial values along top and left edges
+    for (var y = 0; y < scaledH; ++y) pt(0, y, 0);
+    for (var x = 0; x < scaledW; ++x) pt(x, 0, pt(x, -1));
+
+    // At each scale level, apply diamond-square algorithm to
+    // midpoints between existing values
+    var sigma = pt(n, 0);
+    while (n > 0) {
+      for (var y = n; y < scaledH; y += 2*n) {
+        for (var x = n; x < scaledW; x += 2*n) {
+          pt(x, y, crand(2 * sigma) * SQRT2 + bishopavg(x,y,n));
+        }
+      }
+
+      for (var y = 0; y < scaledH; y += 2*n) {
+        for (var x = n; x < scaledW; x += 2*n) {
+          pt(x, y, crand(2 * sigma) + rookavg(x,y,n));
+        }
+      }
+
+      for (var y = n; y < scaledH; y += 2*n) {
+        for (var x = 0; x < scaledW; x += 2*n) {
+          pt(x, y, crand(2 * sigma) + rookavg(x,y,n));
+        }
+      }
+
+      n >>= 1;
+      sigma *= persistence;
+  	}
+
+  	function rgb(r,g,b) { return "rgb(" + (r * 255 >> 0) + "," + (g * 255 >> 0) + "," + (b * 255 >> 0) + ")" }
+  	for (var y = 0; y < scaledH; ++y) {
+  		for (var x = 0; x < scaledW; ++x) {
+  			var ctx = canvas.getContext("2d");
+  			ctx.fillStyle = rgb(pt(x,y),pt(x,y),pt(x,y));
+  			ctx.fillRect(x * scale, y * scale, scale, scale);
+  		}
+  	}
+
+	var result = function (x, y) {
+		return pt(x / scale >> 0, y / scale >> 0);
+	}
+	return result;
+}
+
+
+
 
 canvas.addEventListener("click", drawMap);
 window.addEventListener("load", drawMap);
