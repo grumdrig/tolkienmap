@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8"/>
 <title>Map of Central Planet</title>
 <style>
 html, body {
@@ -115,7 +116,8 @@ CanvasRenderingContext2D.prototype.mountainRange = function (DW, DH) {
   }
 
 
-function bigOneInMiddle(ctx) {
+// This just shows a single mountain in the middle of the page
+function bigOneInMiddle(ctx, DW, DH) {
 	var c = scale({x:W, y:H}, 1/2);
 	var s = 10;
 	var m = 1.1;
@@ -419,21 +421,39 @@ function drawMap() {
 	ctx.drawBorder(10);
 	ctx.drawBorder(15);
 	ctx.clip();
+
+	// Draw compass rose in the corner
 	var R = 45;
 	ctx.compassRose(W - 2 * R, 2 * R, R);
+
+	// Size of a single mountain
 	var DW = 20, DH = DW;
-	// ctx.fieldOfMountains(DW, DH);
-	// ctx.bigOneInMiddle(30, 30);
-	for (var i = 0; i < 1; i++) ctx.mountainRange(DW, DH);
-	// ctx.forest(100, 100, 200, 300);
+
+	// Fill the world with mountains
+	//ctx.fieldOfMountains(DW, DH);
+
+	// Get a closer look at one mountain
+	// bigOneInMiddle(ctx, DW, DH);
+
+	// Run chains of mountains
+	//for (var i = 0; i < 4; i++) ctx.mountainRange(DW, DH);
+
+	// Plant a forest
+	//ctx.forest(100, 100, 200, 300);
+
+	// Test of random spline making
 	// for (var i = 0; i < 100; ++i)
-	// 	ctx.doSpline(meander({x:W/2, y:0}, 10, H * 1.25, PI/2));
+	//  	ctx.doSpline(meander({x:W/2, y:0}, 10, H * 1.25, PI/2));
 	// ctx.stroke();
+
+	// Test of voronoi tiling generation
 	ctx.network(0, 0, W, H);
 
 	// Noise function is here for future use depending on how map gen is going to work in the long run
 	// It isn't used now
-	// Noise(20);
+	// let noise = Noise(20);
+	// noise.show(canvas.getContext("2d"));
+
 }
 
 function Noise(scale) {
@@ -505,18 +525,21 @@ function Noise(scale) {
       sigma *= persistence;
   	}
 
-  	function rgb(r,g,b) { return "rgb(" + (r * 255 >> 0) + "," + (g * 255 >> 0) + "," + (b * 255 >> 0) + ")" }
-  	for (var y = 0; y < scaledH; ++y) {
-  		for (var x = 0; x < scaledW; ++x) {
-  			var ctx = canvas.getContext("2d");
-  			ctx.fillStyle = rgb(pt(x,y),pt(x,y),pt(x,y));
-  			ctx.fillRect(x * scale, y * scale, scale, scale);
-  		}
-  	}
-
 	var result = function (x, y) {
 		return pt(x / scale >> 0, y / scale >> 0);
 	}
+
+  	// Draw what we've generated
+  	function rgb(r,g,b) { return "rgb(" + (r * 255 >> 0) + "," + (g * 255 >> 0) + "," + (b * 255 >> 0) + ")" }
+  	result.show = function (ctx) {
+	  	for (var y = 0; y < scaledH; ++y) {
+	  		for (var x = 0; x < scaledW; ++x) {
+	  			ctx.fillStyle = rgb(pt(x,y),pt(x,y),pt(x,y));
+	  			ctx.fillRect(x * scale, y * scale, scale, scale);
+	  		}
+	  	}
+  	}
+
 	return result;
 }
 
