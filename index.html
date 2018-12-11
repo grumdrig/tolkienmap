@@ -55,8 +55,10 @@ CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakines
 	peaks = peaks.sort(function (a,b) { return a.y - b.y });
 
 	[].forEach.call(peaks, function (p) {
-		let pk = typeof peakiness === 'number' ? peakiness : 0.1 + 0.5 * Math.random();
-		ctx.mountain(p, DW * 2, DH * pk * 2, null, pk);
+		let pk = peakiness(p.x, p.y);
+		if (pk >= 0) {
+			ctx.mountain(p, DW * 2, DH * pk * 2, null, pk);
+		}
 	});
 }
 
@@ -328,7 +330,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ns.map(function (n) { voi.seeds[n].terrain = 'foothill' });
 	}
 
-	var SHOWALL = true;
+	var SHOWALL = false;
 
 	ctx.strokeStyle = "#fee";
 	if (SHOWALL) voi.triangles.forEach(function (t) {
@@ -351,6 +353,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	});
 	ctx.strokeStyle = "#000";
 
+	// Show Voronoi seeds
 	if (SHOWALL) voi.seeds.forEach(function (p) {
 		if (p.terrain == 'mountain')
 			ctx.fillStyle = '#080';
@@ -365,6 +368,18 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	if (SHOWALL) voi.nodes.forEach(function (p) {
 		ctx.fillRect(p.x, p.y, 2, 2);
 	});
+
+	let features = [];
+	voi.seeds.forEach(p => {
+		if (p.terrain == 'mountain')
+			features.push({y:p.y, draw: _ => ctx.mountain(p, 40, 20, true, 0.5)});
+		else if (p.terrain == 'foothill')
+			features.push({y:p.y, draw: _ => ctx.mountain(p, 40, 10, true, 0.2)});
+
+	});
+	features = features.sort((a,b) => a.y - b.y);
+	features.forEach(f => f.draw());
+
 
 	// Find coastline endpoints
 	var tl = 0, dtl = Number.POSITIVE_INFINITY;
@@ -432,14 +447,18 @@ function drawMap() {
 	var DW = 20, DH = DW;
 
 	// Fill the world with mountains
-	// ctx.fieldOfMountains(DW, DH, 0.5);
+	// ctx.fieldOfMountains(DW, DH, _ => 0.5);
 
-	// Fill the world with mountains and hills
-	ctx.fieldOfMountains(DW, DH);
+	// Fill the world with mountains and hills accounding to midpoint disp. noise
+	// let n = Noise(20);
+	// ctx.fieldOfMountains(DW, DH, (x,y) => Math.min(n(x,y) - 0.5, 0.25) * 2);
+
+	// Random-sized mountains
+	// ctx.fieldOfMountains(DW, DH, _ => 0.1 + 0.5 * Math.random());
 
 	// Fill the world with foothills
 	// The foothills should tamper off better at the ends, instead of /^^\, more like _/^\_
-	// ctx.fieldOfMountains(DW, DH/2, 0.2);
+	// ctx.fieldOfMountains(DW, DH, _ => 0.2);
 
 	// Get a closer look at one mountain
 	// bigOneInMiddle(ctx, DW, DH);
@@ -456,7 +475,7 @@ function drawMap() {
 	// ctx.stroke();
 
 	// Test of voronoi tiling generation
-	//ctx.network(0, 0, W, H);
+	ctx.network(0, 0, W, H);
 
 	// Noise function is here for future use depending on how map gen is going to work in the long run
 	// It isn't used now
@@ -467,7 +486,8 @@ function drawMap() {
 
 function Noise(scale) {
 	// Midpoint displacement noise.
-	// The generated noise is scaled down in res
+	// The generated noise is scaled down in res. Translation to map coords in baked in.
+	// It's seeded to slope up from west to east
 	var scaledW = ceil(W / scale);
 	var scaledH = ceil(H / scale);
 	var points = new Float32Array(scaledW * scaledH);
@@ -543,7 +563,8 @@ function Noise(scale) {
   	result.show = function (ctx) {
 	  	for (var y = 0; y < scaledH; ++y) {
 	  		for (var x = 0; x < scaledW; ++x) {
-	  			ctx.fillStyle = rgb(pt(x,y),pt(x,y),pt(x,y));
+	  			let v = pt(x,y);
+	  			ctx.fillStyle = rgb(v,v,v);
 	  			ctx.fillRect(x * scale, y * scale, scale, scale);
 	  		}
 	  	}
