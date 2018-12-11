@@ -44,7 +44,7 @@ var W = canvas.width  = window.innerWidth;
 var H = canvas.height = window.innerHeight;
 
 // Draw the mountains
-CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH) {
+CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakiness) {
 	var ctx = this;
 	var peaks = [];
 	for (var j = H; j > 0; j -= DH) {
@@ -55,16 +55,26 @@ CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH) {
 	peaks = peaks.sort(function (a,b) { return a.y - b.y });
 
 	[].forEach.call(peaks, function (p) {
-		ctx.mountain(p, DW * 2, DH);
+		let pk = typeof peakiness === 'number' ? peakiness : 0.1 + 0.5 * Math.random();
+		ctx.mountain(p, DW * 2, DH * pk * 2, null, pk);
 	});
 }
 
-CanvasRenderingContext2D.prototype.mountain = function (p, w, h, transparent) {
+
+// peakiness: 1 is like _/\_ , 0.5 is linear slopes, 0 is /^^\
+CanvasRenderingContext2D.prototype.mountain = function (p, w, h, transparent, peakiness) {
 	this.beginPath();
 	var westPt = add(p, {x:-w/2, y:h});
 	var eastPt = add(p, {x: w/2, y:h});
-	var westSlope = handDrawnLine(westPt, p);
-	var eastSlope = handDrawnLine(p, eastPt);
+	if (typeof peakiness == 'number') {
+		var westShoulder = add(p, {x:-w/4, y:h * peakiness});
+		var eastShoulder = add(p, {x:+w/4, y:h * peakiness});
+		var westSlope = handDrawnLine(westPt, westShoulder).concat(handDrawnLine(westShoulder, p));
+		var eastSlope = handDrawnLine(p, eastShoulder).concat(handDrawnLine(eastShoulder, eastPt));
+	} else {
+		var westSlope = handDrawnLine(westPt, p);
+		var eastSlope = handDrawnLine(p, eastPt);
+	}
 	this.fillStyle = "#fff";
 	if (!transparent) this.fillRect(westPt.x, westPt.y, w * 2, 20);
 	this.doSpline(westSlope.concat(eastSlope));
@@ -422,7 +432,14 @@ function drawMap() {
 	var DW = 20, DH = DW;
 
 	// Fill the world with mountains
-	//ctx.fieldOfMountains(DW, DH);
+	// ctx.fieldOfMountains(DW, DH, 0.5);
+
+	// Fill the world with mountains and hills
+	ctx.fieldOfMountains(DW, DH);
+
+	// Fill the world with foothills
+	// The foothills should tamper off better at the ends, instead of /^^\, more like _/^\_
+	// ctx.fieldOfMountains(DW, DH/2, 0.2);
 
 	// Get a closer look at one mountain
 	// bigOneInMiddle(ctx, DW, DH);
@@ -439,7 +456,7 @@ function drawMap() {
 	// ctx.stroke();
 
 	// Test of voronoi tiling generation
-	ctx.network(0, 0, W, H);
+	//ctx.network(0, 0, W, H);
 
 	// Noise function is here for future use depending on how map gen is going to work in the long run
 	// It isn't used now
