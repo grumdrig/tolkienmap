@@ -282,21 +282,24 @@ function quasiRandomPointCloud(count, x, y, w, h) {
 	return pts;
 }
 
+CanvasRenderingContext2D.prototype.tree = function (p, R) {
+	let ctx = this;
+	ctx.beginPath();
+	ctx.doSpline(handDrawnLine(p, add(p, {x:0, y:R*1.3})));
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.doSpline(handDrawnArc(p, R, -PI/2, 3*PI/2));
+	ctx.fill();
+	ctx.stroke();
+}
+
 CanvasRenderingContext2D.prototype.forest = function (x, y, w, h) {
 	var ctx = this;
 	var R = 10;
 	var pts = quasiRandomPointCloud(w * h / (R * R * PI/2), x, y, w, h);
 	pts = pts.sort(function (a,b) { return a.y - b.y });
 	ctx.fillStyle = "white";
-	pts.forEach(function (p) {
-		ctx.beginPath();
-		ctx.doSpline(handDrawnLine(p, add(p, {x:0, y:R*1.3})));
-		ctx.stroke();
-		ctx.beginPath();
-		ctx.doSpline(handDrawnArc(p, R, -PI/2, 3*PI/2));
-		ctx.fill();
-		ctx.stroke();
-	});
+	pts.forEach(p => ctx.tree(p, R));
 }
 
 function dump(label, arr) {
@@ -315,20 +318,19 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	// Trace in a mountain range
 	var active = [pick(voi.seeds.length)];
 	for (var i = 0; i < 30; ++i) {
-		active.map(function(a) { voi.seeds[a].terrain = 'mountain' });
-		var ns = active.reduce(function (p, c) { return p.concat(voi.seeds[c].neighbors) }, []);
-		ns = Array.from(new Set(ns)).filter(function (n) { return !voi.seeds[n].terrain });
+		active.map(a => voi.seeds[a].terrain = 'mountain');
+		var ns = active.reduce((p, c) => p.concat(voi.seeds[c].neighbors), []);
+		ns = Array.from(new Set(ns)).filter(n => !voi.seeds[n].terrain);
 		if (ns.length == 0) break;
 		active = [pick(ns)];
 		for (var k = 0; k < 1; ++k) {
-			var eligible = ns.filter(function (n) {
-				return !active.has(n) && voi.seeds[active[0]].neighbors.has(n)
-			});
+			var eligible = ns.filter(n => !active.has(n) && voi.seeds[active[0]].neighbors.has(n));
 			if (eligible.length == 0) break;
 			active.push(pick(eligible));
 		}
-		ns.map(function (n) { voi.seeds[n].terrain = 'foothill' });
+		ns.forEach(n => voi.seeds[n].terrain = 'foothill');
 	}
+
 
 	var SHOWALL = false;
 
@@ -467,7 +469,7 @@ function drawMap() {
 	//for (var i = 0; i < 4; i++) ctx.mountainRange(DW, DH);
 
 	// Plant a forest
-	//ctx.forest(100, 100, 200, 300);
+	ctx.forest(100, 100, 200, 300);
 
 	// Test of random spline making
 	// for (var i = 0; i < 100; ++i)
