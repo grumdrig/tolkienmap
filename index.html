@@ -316,6 +316,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	var voi = new Triangulation(pts);
+	console.log(voi);
 
 	function growPatch(core, edges) {
 		var active = [pick(voi.seeds.filter(s => !s.terrain)).index];
@@ -384,7 +385,8 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			ctx.fillStyle = "pink";
 		else
 			ctx.fillStyle = "#ddd";
-		ctx.fillRect(p.x, p.y, 6, 6);
+		let S = 6;
+		ctx.fillRect(p.x-S/2, p.y-S/2, S, S);
 	});
 
 	// ctx.fillStyle = "#00f";

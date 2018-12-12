@@ -21,6 +21,12 @@ function dist2(p, q) { var dx = p.x - q.x, dy = p.y - q.y; return dx*dx + dy*dy;
 // v.sort(function (p1, p2) { return p1.x - p2.x });
 // Returned is a list of triangular faces in the array
 // These triangles are arranged in a consistent clockwise order.
+// Members:
+//   seeds:     [{x,y: position;
+//                neighbors: [indices into seeds}] voronoi points
+//   triangles: [{p1,p2,p3: indices into seeds}]   delauny triangulation
+//   nodes:     [{x,y: position; edges:[3 indices into edges]}]                  corners in voronoi graph
+//   edges:     [{p1,p2: indices into nodes}]      edges in voronoi graph
 function Triangulation(seeds) {
    seeds.sort(function (p1,p2) { return p1.x - p2.x });
 
@@ -130,7 +136,7 @@ function Triangulation(seeds) {
 
    // Note seed neighbors
    seeds.forEach(s => s.neighbors = []);
-   triangles.map(t => {
+   triangles.forEach(t => {
       seeds[t.p1].neighbors.push(t.p2);
       seeds[t.p1].neighbors.push(t.p3);
       seeds[t.p2].neighbors.push(t.p1);
@@ -143,12 +149,8 @@ function Triangulation(seeds) {
    seeds.forEach((s,i) => s.index = i);
 }
 
-/*
-   Return { inside: true } if a point (xp,yp) is inside the circumcircle made up
-   of the points (x1,y1), (x2,y2), (p3.x,y3)
-   The circumcircle center is returned as (xc,yc) and the squared radius rsqr
-   NOTE: A point on the edge is inside the circumcircle
-*/
+// Find the circle containing the three points. I.e. center {x,y} equidistant
+// from the three points, at squared distance {rr}
 var EPSILON = 0.0000001;
 function circumCircle(p1, p2, p3) {
    var m1,m2,mx1,mx2,my1,my2;
@@ -222,12 +224,11 @@ Triangulation.prototype.computeDual = function () {
       addEdge(t.p2, t.p3);
       addEdge(t.p3, t.p1);
    }
-   // TODO: pretty sure this is a no-op
-   for (var i = 0; i < edges.length; ++i) {
-      var e = edges[i];
-      edges[i] = {p1: nodes[e.ts[0]], p2: nodes[e.ts[1]]};
-   }
 
+   // At this point edges is the edges of the Delauny triangulation, with
+   // elements {p1,p2,ts} with pN indices into seed and ts[N] being indices
+   // into this.triangles. But es, here, which becomes this.edges, will be
+   // indices into nodes instead.
    var es = [];
    for (var k in edges) {
       var e = edges[k];
