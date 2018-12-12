@@ -43,6 +43,8 @@ var canvas = body.$("canvas#map");
 var W = canvas.width  = window.innerWidth;
 var H = canvas.height = window.innerHeight;
 
+let COMPASS_R = 45;
+
 // Draw the mountains
 CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakiness) {
 	var ctx = this;
@@ -332,8 +334,15 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		}
 	}
 
+	// Reserve room for the compass rose
+	voi.seeds.forEach(p => {
+		if (p.x > W - COMPASS_R * 3.2 && p.y < COMPASS_R * 3.2)
+			p.terrain = 'compass';
+	});
 
 	// Trace in a mountain range
+	growPatch('mountain', 'foothill');
+	growPatch('forest', 'forest');
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
 
@@ -363,12 +372,18 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 
 	// Show Voronoi seeds
 	if (SHOWALL) voi.seeds.forEach(function (p) {
-		if (p.terrain == 'mountain')
+		if (p.terrain === 'mountain')
+			ctx.fillStyle = '#008';
+		else if (p.terrain === 'foothill')
+			ctx.fillStyle = '#88f';
+		else if (p.terrain === 'forest')
 			ctx.fillStyle = '#080';
-		else if (p.terrain == 'foothill')
+		else if (p.terrain === 'sparse forest')
 			ctx.fillStyle = '#8f8';
-		else
+		else if (p.terrain === 'compass')
 			ctx.fillStyle = "pink";
+		else
+			ctx.fillStyle = "yellow";
 		ctx.fillRect(p.x, p.y, 6, 6);
 	});
 
@@ -457,10 +472,6 @@ function drawMap() {
 	ctx.drawBorder(15);
 	ctx.clip();
 
-	// Draw compass rose in the corner
-	var R = 45;
-	ctx.compassRose(W - 2 * R, 2 * R, R);
-
 	// Size of a single mountain
 	var DW = 20, DH = DW;
 
@@ -499,6 +510,9 @@ function drawMap() {
 	// It isn't used now
 	// let noise = Noise(20);
 	// noise.show(canvas.getContext("2d"));
+
+	// Draw compass rose in the corner
+	ctx.compassRose(W - 2 * COMPASS_R, 2 * COMPASS_R, COMPASS_R);
 
 }
 
