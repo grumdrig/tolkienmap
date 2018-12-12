@@ -372,10 +372,10 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ctx.fillRect(p.x, p.y, 6, 6);
 	});
 
-	ctx.fillStyle = "#00f";
-	if (SHOWALL) voi.nodes.forEach(function (p) {
-		ctx.fillRect(p.x, p.y, 2, 2);
-	});
+	// ctx.fillStyle = "#00f";
+	// if (SHOWALL) voi.nodes.forEach(function (p) {
+	// 	ctx.fillRect(p.x, p.y, 2, 2);
+	// });
 
 	let features = [];
 	voi.seeds.forEach(p => {
@@ -384,11 +384,13 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		else if (p.terrain == 'foothill')
 			features.push({y:p.y, draw: _ => ctx.mountain(p, 40, 10, true, 0.2)});
 		else if (p.terrain == 'forest') {
+			let T = 10;
+			features.push({y:p.y, draw: _ => ctx.tree(p, T)});
 			p.neighbors.forEach(nn => {
 				let n = voi.seeds[nn];
-				if (n.terrain == 'forest' && Math.random() < 1) {
-					let q = {x: (2 * p.x + n.x) / 3, y: (2 * p.y + n.y) / 3};
-					features.push({y:q.y, draw: _ => ctx.tree(q, 8)});
+				if (n.terrain == 'forest' && n.x > p.x && Math.random() < 0.5) {
+					let q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
+					features.push({y:q.y, draw: _ => ctx.tree(q, T)});
 				}
 			});
 		}
