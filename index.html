@@ -318,7 +318,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var voi = new Triangulation(pts);
 
 	function growPatch(core, edges) {
-		var active = [pick(voi.seeds.length)];
+		var active = [pick(voi.seeds.filter(s => !s.terrain)).index];
 		for (var i = 0; i < 30; ++i) {
 			active.map(a => voi.seeds[a].terrain = core);
 			var ns = active.reduce((p, c) => p.concat(voi.seeds[c].neighbors), []);
@@ -383,7 +383,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		else if (p.terrain === 'compass')
 			ctx.fillStyle = "pink";
 		else
-			ctx.fillStyle = "yellow";
+			ctx.fillStyle = "#ddd";
 		ctx.fillRect(p.x, p.y, 6, 6);
 	});
 

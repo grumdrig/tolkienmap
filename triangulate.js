@@ -129,8 +129,8 @@ function Triangulation(seeds) {
    this.computeDual();
 
    // Note seed neighbors
-   seeds.map(function (s) { s.neighbors = [] });
-   triangles.map(function (t) {
+   seeds.forEach(s => s.neighbors = []);
+   triangles.map(t => {
       seeds[t.p1].neighbors.push(t.p2);
       seeds[t.p1].neighbors.push(t.p3);
       seeds[t.p2].neighbors.push(t.p1);
@@ -139,9 +139,9 @@ function Triangulation(seeds) {
       seeds[t.p3].neighbors.push(t.p2);
    });
 
-   // VOI = this;
+   // Note indices of seeds
+   seeds.forEach((s,i) => s.index = i);
 }
-// var VOI;
 
 /*
    Return { inside: true } if a point (xp,yp) is inside the circumcircle made up
