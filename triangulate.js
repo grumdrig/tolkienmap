@@ -206,32 +206,28 @@ function inCircle(xp, yp, cc) {
 }
 
 Triangulation.prototype.computeDual = function () {
-   var nodes = [];
-   var edges = {};
+   var nodes = this.nodes = [];  // Nodes in the Voronoi diagram
+   var sides = {};  // Sides of the Delauny triagles; values `{p1,p2,ts}` are indices into `this.seeds` and `this.triangles`
    function key(p1, p2) { return p1 + "," + p2 }
    for (var i = 0; i < this.triangles.length; ++i) {
       var t = this.triangles[i];
       var cc = circumCircle(this.seeds[t.p1], this.seeds[t.p2], this.seeds[t.p3]);
-      cc.edges = [];  // a place to map nodes to edges
+      cc.edges = [];  // a place to map nodes to the edges that end there
       nodes.push(cc);
-      function addEdge(p1, p2) {
+      function addSide(p1, p2) {
          if (p1 > p2) { var t = p1; p1 = p2; p2 = t }
          var k = key(p1, p2);
-         if (!(k in edges)) edges[k] = {p1:p1, p2:p2, ts:[]};
-         edges[k].ts.push(i);
+         if (!(k in sides)) sides[k] = {p1:p1, p2:p2, ts:[]};
+         sides[k].ts.push(i);
       }
-      addEdge(t.p1, t.p2);
-      addEdge(t.p2, t.p3);
-      addEdge(t.p3, t.p1);
+      addSide(t.p1, t.p2);
+      addSide(t.p2, t.p3);
+      addSide(t.p3, t.p1);
    }
 
-   // At this point edges is the edges of the Delauny triangulation, with
-   // elements {p1,p2,ts} with pN indices into seed and ts[N] being indices
-   // into this.triangles. But es, here, which becomes this.edges, will be
-   // indices into nodes instead.
-   var es = [];
-   for (var k in edges) {
-      var e = edges[k];
+   var es = this.edges = [];  // Elements are {p1,p2,seeds[]}, indices into nodes and seeds
+   for (var k in sides) {
+      var e = sides[k];
       if (e.ts.length == 1) {
          // This edge is on the outside, w/o a triangle on the other side, so we
          // must construct a point for the edge
@@ -253,10 +249,8 @@ Triangulation.prototype.computeDual = function () {
       }
       nodes[e.ts[0]].edges.push(es.length); // Point from nodes...
       nodes[e.ts[1]].edges.push(es.length); // ...to edges
-      es.push({p1:e.ts[0], p2:e.ts[1]});
+      es.push({p1:e.ts[0], p2:e.ts[1], seeds: [e.p1,e.p2]});
    }
-   this.nodes = nodes;
-   this.edges = es;
 }
 
 Triangulation.prototype.findPath = function (start, goal, neighbors, dist_between, heuristic_cost_estimate) {

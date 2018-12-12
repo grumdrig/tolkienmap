@@ -310,6 +310,10 @@ function dump(label, arr) {
 
 Array.prototype.has = function (e) { return this.indexOf(e) >= 0 };
 
+function clockwise(A,B,C) {
+  return (C.y-A.y) * (B.x-A.x) < (B.y-A.y) * (C.x-A.x);
+}
+
 CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
 	var R = 20;
@@ -339,6 +343,56 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	voi.seeds.forEach(p => {
 		if (p.x > W - COMPASS_R * 3.2 && p.y < COMPASS_R * 3.2)
 			p.terrain = 'compass';
+	});
+
+
+	// Find coastline endpoints
+	var tl = 0, dtl = Number.POSITIVE_INFINITY;
+	var br = voi.nodes.length - 1, dbr = Number.POSITIVE_INFINITY;
+	for (var i = 0; i < voi.nodes.length; ++i) {
+		var vi = voi.nodes[i];
+		if (vi.y <= 0 && abs(vi.x - W/8) < dtl) {
+			tl = i;
+			dtl = abs(vi.x - W/8);
+		}
+		if (vi.y >= H && abs(vi.x - W/2) < dbr) {
+			br = i;
+			dbr = abs(vi.x - W/2);
+		}
+	}
+	var coastline = voi.findPath(tl, br,
+		function (i) {
+			var es = voi.nodes[i].edges;
+			var result = new Set();
+			for (var j = 0; j < es.length; ++j) {
+				var e = voi.edges[es[j]];
+				result.add(i == e.p1 ? e.p2 : e.p1);
+			}
+			return result;
+		},
+		function (i,j) {
+			var d = distance(voi.nodes[i], voi.nodes[j]);
+			d += 6000 / distance(voi.nodes[i], {x:W/3,y:H/4});
+			d += 6000 / distance(voi.nodes[i], {x:W/3,y:H/4});
+			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
+			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
+			return d;
+		});
+
+	ctx.doSpline(coastline.map(p => voi.nodes[p]));
+	ctx.strokeStyle = "#000";
+	ctx.stroke();
+
+	let coastEdges = [];
+	let cursor = coastline[0];
+	coastline.slice(1).forEach(p => {
+		let e = voi.nodes[p].edges.filter(e => (voi.edges[e].p1 == cursor && voi.edges[e].p2 == p) ||
+               								   (voi.edges[e].p2 == cursor && voi.edges[e].p1 == p))[0];
+		// Need a way to decide which side is land and which is sea
+		let swapper = clockwise(voi.nodes[cursor], voi.nodes[p], voi.seeds[voi.edges[e].seeds[0]]) ? 0 : 1;
+		voi.seeds[voi.edges[e].seeds[0 ^ swapper]].terrain = 'shallows';
+		voi.seeds[voi.edges[e].seeds[1 ^ swapper]].terrain = 'beach';
+		cursor = p;
 	});
 
 	// Trace in a mountain range
@@ -383,6 +437,12 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			ctx.fillStyle = '#8f8';
 		else if (p.terrain === 'compass')
 			ctx.fillStyle = "pink";
+		else if (p.terrain === 'beach')
+			ctx.fillStyle = "yellow";
+		else if (p.terrain === 'shallows')
+			ctx.fillStyle = "#adf";
+		else if (p.terrain === 'deeps')
+			ctx.fillStyle = "#88f";
 		else
 			ctx.fillStyle = "#ddd";
 		let S = 6;
@@ -414,44 +474,6 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	});
 	features = features.sort((a,b) => a.y - b.y);
 	features.forEach(f => f.draw());
-
-
-	// Find coastline endpoints
-	var tl = 0, dtl = Number.POSITIVE_INFINITY;
-	var br = voi.nodes.length - 1, dbr = Number.POSITIVE_INFINITY;
-	for (var i = 0; i < voi.nodes.length; ++i) {
-		var vi = voi.nodes[i];
-		if (vi.y <= 0 && abs(vi.x - W/8) < dtl) {
-			tl = i;
-			dtl = abs(vi.x - W/8);
-		}
-		if (vi.y >= H && abs(vi.x - W/2) < dbr) {
-			br = i;
-			dbr = abs(vi.x - W/2);
-		}
-	}
-	var coastline = voi.findPath(tl, br,
-		function (i) {
-			var es = voi.nodes[i].edges;
-			var result = new Set();
-			for (var j = 0; j < es.length; ++j) {
-				var e = voi.edges[es[j]];
-				result.add(i == e.p1 ? e.p2 : e.p1);
-			}
-			return result;
-		},
-		function (i,j) {
-			var d = distance(voi.nodes[i], voi.nodes[j]);
-			d += 6000 / distance(voi.nodes[i], {x:W/3,y:H/4});
-			d += 6000 / distance(voi.nodes[i], {x:W/3,y:H/4});
-			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
-			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
-			return d;
-		});
-
-	ctx.doSpline(coastline.map(p => voi.nodes[p]));
-	ctx.strokeStyle = "#000";
-	ctx.stroke();
 }
 
 function meander(p, n, d, a) {
