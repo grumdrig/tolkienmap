@@ -357,6 +357,7 @@ function findParallel(points, D) {
 		let isExterior = scalarCross(subtract(v, u), subtract(w, v)) * D < 0;
 		if (isExterior)	{
 			result.push(add(v, perp(u,v)));
+			result.push(add(v, scale(normalize(midpoint(normalize(subtract(v,w)), normalize(subtract(v,u)))), abs(D))))
 			result.push(add(v, perp(v,w)));
 		} else {
 			let u1 = add(u, perp(u,v));
