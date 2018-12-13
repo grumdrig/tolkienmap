@@ -23,6 +23,7 @@ let pow = Math.pow;
 let cos = Math.cos;
 let sin = Math.sin;
 let ceil = Math.ceil;
+let floor = Math.floor;
 let min = Math.min;
 let max = Math.max;
 let round = Math.round;
@@ -168,12 +169,17 @@ function handDrawnArc(c, r, a0, a1, eccentricity) {
 	return result;
 }
 
-function handDrawn(points, eccentricity) {
-	let result = [];
+function handDrawn(points, eccentricity = 5) {
 	let c = points[0];
+	let result = [c];
 	points.slice(1).forEach((p,i) => {
-		let segment = handDrawnLine(c, p, eccentricity);
-		result = result.concat(segment.slice(min(1, i)));
+		let nsegments = 1 + floor(distance(c, p) / 50);
+		let step = scale(subtract(p, c), 1/nsegments);
+		var normal = normalize(vec(c.y-p.y, p.x-c.x));
+		for (let i = 1; i < nsegments; ++i) {
+			result.push(add(add(c, scale(step, i)), scale(normal, crand(eccentricity))));
+		}
+		result.push(add(p, scale(normal, crand(eccentricity))));
 		c = p;
 	});
 	return result;
@@ -481,37 +487,41 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			return d;
 		});
 
-	// TODO handdrawn this
-	let coast = coastline.map(p => voi.nodes[p]);
-	ctx.beginPath();
-	ctx.doLine(coast);
-	ctx.strokeStyle = "#000";
-	ctx.stroke();
 
-	ctx.beginPath();
-	ctx.doLine(removeCrossovers(findParallel(coast, 6)));
-	ctx.doLine(removeCrossovers(findParallel(coast,-6)));
-	ctx.stroke();
-
-	/*
 	// let xxx = [vec(0,0),vec(1,1),vec(0,1),vec(1,0)];
 	// console.log(removeCrossovers(xxx));
 
+	// ctx.beginPath();
+	// let t = [vec( 50,100), vec(100,100), vec(200,200), vec(200,300),
+	// 		 vec(300,300), vec(300, 400), vec(250,320),vec(200,500)];
+	// console.log(t);
+	// console.log(handDrawn(t));
+	// ctx.doLine(handDrawn(t));
+	// ctx.strokeStyle = "#000";
+	// ctx.stroke();
+	// ctx.beginPath();
+	// ctx.doLine(removeCrossovers(handDrawn(findParallel(t, 20))));
+	// ctx.strokeStyle = "#0f0";
+	// ctx.stroke();
+	// ctx.beginPath();
+	// ctx.doLine(removeCrossovers(handDrawn(findParallel(t, -20))));
+	// ctx.strokeStyle = "#f00";
+	// ctx.stroke();
+
+	// crash();
+
+
+	let E = 2;
+	let coast = coastline.map(p => voi.nodes[p]);
 	ctx.beginPath();
-	let t = [vec( 50,100), vec(100,100), vec(200,200), vec(200,300),
-			 vec(300,300), vec(300, 400), vec(250,320),vec(200,500)];
-	ctx.doLine(t);
+	ctx.doLine(removeCrossovers(handDrawn(coast, E)));
 	ctx.strokeStyle = "#000";
 	ctx.stroke();
+
 	ctx.beginPath();
-	ctx.doLine(removeCrossovers(findParallel(t, 20)));
-	ctx.strokeStyle = "#0f0";
+	ctx.doLine(removeCrossovers(handDrawn(findParallel(coast, 6), E)));
+	ctx.doLine(removeCrossovers(handDrawn(findParallel(coast,-6), E)));
 	ctx.stroke();
-	ctx.beginPath();
-	ctx.doLine(removeCrossovers(findParallel(t, -20)));
-	ctx.strokeStyle = "#f00";
-	ctx.stroke();
-	*/
 
 	let shallows = [];
 	let coastEdges = [];
