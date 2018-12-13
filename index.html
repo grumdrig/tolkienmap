@@ -353,6 +353,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var br = voi.nodes.length - 1, dbr = Number.POSITIVE_INFINITY;
 	for (var i = 0; i < voi.nodes.length; ++i) {
 		var vi = voi.nodes[i];
+		if (!vi.outside) continue;
 		if (vi.y <= 0 && abs(vi.x - W/8) < dtl) {
 			tl = i;
 			dtl = abs(vi.x - W/8);
@@ -405,13 +406,6 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	while (oset.length > 0) {
 		++ num;
 		let oo = oset.pop();
-		// This test seems to work to keep the flood fill from going around
-		// the end of the coastline. It's pretty kludgey but I think the best
-		// plan is to get the coast to extend all the way to the ends of the
-		// graph.
-		let M = 20;
-		if (M <= oo.x && oo.x <= W - M &&
-			M <= oo.y && oo.y <= H - M)
 		oo.neighbors.forEach(nn => {
 			let n = voi.seeds[nn];
 			if (!n.terrain) {
@@ -514,6 +508,8 @@ function meander(p, n, d, a) {
 function drawMap() {
 	var ctx = canvas.getContext("2d");
 	ctx.save();
+	// ctx.translate(100,100);
+	// ctx.scale(0.75, 0.75);
 	ctx.clearRect(0,0,canvas.width, canvas.height);
 	ctx.lineWidth = 1;
 	ctx.strokeStyle = "#000";

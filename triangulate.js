@@ -245,7 +245,7 @@ Triangulation.prototype.computeDual = function () {
             end = subtract(scale(c1, 2), end);
          }
          end.edges = [];
-         // end.outside = true;  // we'll call this an outside point
+         end.outside = true;  // we'll call this an outside point
          nodes.push(end);
       }
       nodes[e.ts[0]].edges.push(this.edges.length); // Point from nodes...
