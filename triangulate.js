@@ -16,15 +16,14 @@ function average(p, q)  { return scale(add(p,q), 1/2) }
 function distance(p, q) { return magnitude(subtract(p, q)) }
 function midpoint(v1, v2) { return {x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2}; }
 function dist2(p, q) { var dx = p.x - q.x, dy = p.y - q.y; return dx*dx + dy*dy; }
-
-
 function dot(u, v) { return u.x * v.x + u.y * v.y; }
 function scalarCross(u, v) { return u.x * v.y - u.y * v.x; }  // sine of angle between
-function test(u, v, w) {
-  let uv = normalize(subtract(v, u)), vw = normalize(subtract(w, v));
-  console.log(u,v,w,uv,vw);
-  console.log(dot(uv,vw), scalarCross(uv,vw));
-}
+
+// function test(u, v, w) {
+//   let uv = normalize(subtract(v, u)), vw = normalize(subtract(w, v));
+//   console.log(u,v,w,uv,vw);
+//   console.log(dot(uv,vw), scalarCross(uv,vw));
+// }
 // test({x:1,y:1},{x:2,y:2},{x:3,y:3})
 // test({x:0,y:0},{x:1,y:0},{x:1,y:1})
 // test({x:0,y:0},{x:1,y:0},{x:1,y:-1})

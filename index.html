@@ -327,28 +327,32 @@ function clockwise(A,B,C) {
   return (C.y-A.y) * (B.x-A.x) < (B.y-A.y) * (C.x-A.x);
 }
 
+function lineIntersection(u, v, w, z) {
+	// Find the interesection of line through uv, and the one through wz
+	// Using Paul Draper's answer to
+	// https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
+	// Convert to ax + by = c form
+	let [a1,b1,c1] = [u.y - v.y, v.x - u.x, v.x * u.y - u.x * v.y];
+	// console.log(u,v,a1,b1,c1);
+	let [a2,b2,c2] = [w.y - z.y, z.x - w.x, z.x * w.y - w.x * z.y];
+	// console.log(w,z,a2,b2,c2);
+    let D  = a1 * b2 - b1 * a2;
+    if (D === 0) {
+    	return midpoint(v, w); // degenerate case; this is good enough
+    } else {
+	    return vec((c1 * b2 - b1 * c2) / D,
+				   (a1 * c2 - c1 * a2) / D);
+	}
+}
+
+// console.log(lineIntersection(vec(50,80),vec(100,80),vec(283,410),vec(260,370)))
+// crash();
+
 function findParallel(points, D) {
 	function perp(u, v) {
 		let uv = subtract(v, u);
 		return scale(normalize(vec(-uv.y, uv.x)), D);
 	}
-	function intersection(u, v, w, z) {
-		// Find the interesection of line through uv, and the one through wz
-		// Using Paul Draper's answer to
-		// https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
-		// Convert to ax + by = c form
-		let [a1,b1,c1] = [u.y - v.y, v.x - u.x, v.x * u.y - u.x * v.y];
-		let [a2,b2,c2] = [w.y - z.y, z.x - w.x, z.x * w.y - w.x * z.y];
-	    let D  = a1 * b2 - b1 * a2;
-	    // console.log(u,v,w,z,a1,b1,c1,a2,b2,c2);
-	    if (D === 0) {
-	    	return midpoint(v, w); // degenerate case; this is good enough
-	    } else {
-		    return vec((c1 * b2 - b1 * c2) / D,
-					   (a1 * c2 - c1 * a2) / D);
-		}
-	}
-	// console.log(intersection(vec(10,0),vec(100,0),vec(0,10),vec(0,100)));
 	let result = [];
 	let u = points[0];
 	let v = points[1];
@@ -364,13 +368,47 @@ function findParallel(points, D) {
 			let v1 = add(v, perp(u,v));
 			let v2 = add(v, perp(v,w));
 			let w2 = add(w, perp(v,w));
-			result.push(intersection(u1,v1,v2,w2));
+			result.push(lineIntersection(u1,v1,v2,w2));
 		}
 		u = v;
 		v = w;
 	});
 	result.push(add(v, perp(u,v)));
 	// console.log(result);
+	return result;
+}
+
+
+function pointOnSegment(p, s, t) {
+	// This is assuming p in on the line through those points. Check is
+	// redundant for cases of verticals and horizontals.
+	return min(s.x, t.x) <= p.x && p.x <= max(s.x, t.x) &&
+	       min(s.y, t.y) <= p.y && p.y <= max(s.y, t.y);
+}
+
+// TDDO: Should keep sections where lines cross back over in between the crossover
+function removeCrossovers(points) {
+	// console.log(points);
+	let result = [];  // multiple list of points
+	for (let i = 0; i < points.length - 1;) {
+		result.push(points[i]);
+		let nexti = i + 1;
+		for (let j = points.length - 2; j > i + 1 ; --j) {
+			// console.log(i,j);
+			let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
+			// console.log(i,j,intersection);
+			if (pointOnSegment(intersection, points[i], points[i+1]) &&
+				pointOnSegment(intersection, points[j], points[j+1])) {
+				// intersection is within segments
+				// console.log("on", points[i], points[i+1], points[j], points[j+1]);
+				result.push(intersection);
+				nexti = j + 1;
+				break;
+			}
+		}
+		i = nexti;
+	}
+	result.push(points[points.length - 1]);
 	return result;
 }
 
@@ -443,29 +481,37 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			return d;
 		});
 
+	// TODO handdrawn this
+	let coast = coastline.map(p => voi.nodes[p]);
 	ctx.beginPath();
-	ctx.doLine(coastline.map(p => voi.nodes[p]));
+	ctx.doLine(coast);
 	ctx.strokeStyle = "#000";
 	ctx.stroke();
 
 	ctx.beginPath();
-	ctx.doLine(findParallel(coastline.map(p => voi.nodes[p]), 6));
-	ctx.doLine(findParallel(coastline.map(p => voi.nodes[p]),-6));
+	ctx.doLine(removeCrossovers(findParallel(coast, 6)));
+	ctx.doLine(removeCrossovers(findParallel(coast,-6)));
 	ctx.stroke();
 
+	/*
+	// let xxx = [vec(0,0),vec(1,1),vec(0,1),vec(1,0)];
+	// console.log(removeCrossovers(xxx));
+
 	ctx.beginPath();
-	let t = [vec(50,100), vec(100,100), vec(200,200), vec(200,300), vec(300,300), vec(300, 400), vec(250,320),vec(200,500)];
+	let t = [vec( 50,100), vec(100,100), vec(200,200), vec(200,300),
+			 vec(300,300), vec(300, 400), vec(250,320),vec(200,500)];
 	ctx.doLine(t);
 	ctx.strokeStyle = "#000";
 	ctx.stroke();
 	ctx.beginPath();
-	ctx.doLine(findParallel(t, 20));
+	ctx.doLine(removeCrossovers(findParallel(t, 20)));
 	ctx.strokeStyle = "#0f0";
 	ctx.stroke();
 	ctx.beginPath();
-	ctx.doLine(findParallel(t, -20));
+	ctx.doLine(removeCrossovers(findParallel(t, -20)));
 	ctx.strokeStyle = "#f00";
 	ctx.stroke();
+	*/
 
 	let shallows = [];
 	let coastEdges = [];
