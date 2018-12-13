@@ -419,7 +419,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
 
-	var SHOWALL = false;
+	var SHOWALL = true;
 
 	ctx.strokeStyle = "#fee";
 	if (SHOWALL) voi.triangles.forEach(function (t) {
@@ -433,11 +433,11 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ctx.stroke();
 	});
 
-	ctx.strokeStyle = "#afa";
 	if (SHOWALL) voi.edges.forEach(function (e) {
 		ctx.beginPath();
 		ctx.moveTo(voi.nodes[e.p1].x, voi.nodes[e.p1].y);
 		ctx.lineTo(voi.nodes[e.p2].x, voi.nodes[e.p2].y);
+		ctx.strokeStyle = e.outside ? "#0f0" : "#9f9";
 		ctx.stroke();
 	});
 	ctx.strokeStyle = "#000";
@@ -448,19 +448,27 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	// });
 
 	let features = [];
+	let DENSE_FOREST = true;
 	voi.seeds.forEach(p => {
 		if (p.terrain == 'mountain')
 			features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-10}, 40, 20, true, 0.5)});
 		else if (p.terrain == 'foothill')
 			features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-5}, 40, 10, true, 0.2)});
 		else if (p.terrain == 'forest') {
-			let T = 10;
+			let T = DENSE_FOREST ? 8 : 10;
 			features.push({y:p.y, draw: _ => ctx.tree(p, T)});
 			p.neighbors.forEach(nn => {
 				let n = voi.seeds[nn];
-				if (n.terrain == 'forest' && n.x > p.x && Math.random() < 0.5) {
-					let q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
-					features.push({y:q.y, draw: _ => ctx.tree(q, T)});
+				var q;
+				if (n.terrain == 'forest') {
+					if (DENSE_FOREST) {
+						if (Math.random() < 0.5)
+							q = {x: (2 * p.x + n.x) / 3, y: (2 * p.y + n.y) / 3};
+					} else {
+						if (n.x > p.x && Math.random() < 0.5)
+							q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
+					}
+					if (q) features.push({y:q.y, draw: _ => ctx.tree(q, T)});
 				}
 			});
 		}
@@ -507,14 +515,19 @@ function meander(p, n, d, a) {
 function drawMap() {
 	var ctx = canvas.getContext("2d");
 	ctx.save();
-	// ctx.translate(100,100);
-	// ctx.scale(0.75, 0.75);
+	let REVEAL_MARGINS = false;
+	if (REVEAL_MARGINS) {
+		ctx.translate(100,100);
+		ctx.scale(0.8, 0.8);
+	}
 	ctx.clearRect(0,0,canvas.width, canvas.height);
 	ctx.lineWidth = 1;
 	ctx.strokeStyle = "#000";
 	ctx.drawBorder(10);
 	ctx.drawBorder(15);
-	ctx.clip();
+	if (!REVEAL_MARGINS) {
+		ctx.clip();
+	}
 
 	// Size of a single mountain
 	var DW = 20, DH = DW;
