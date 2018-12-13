@@ -116,7 +116,6 @@ CanvasRenderingContext2D.prototype.mountainRange = function (DW, DH) {
     for (var i = 0; i < N; ++i) {
       x = x + crand(100);
       let y = (this.canvas.height - 64) * i / N + 16 * rand();
-      // console.log(y);
       this.mountain({x:x, y:y}, DW * 2, DH, true);
     }
   }
@@ -320,7 +319,6 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	var voi = new Triangulation(pts);
-	console.log(voi);
 
 	function growPatch(core, edges) {
 		let available = voi.seeds.filter(s => !s.terrain);
@@ -421,7 +419,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
 
-	var SHOWALL = true;
+	var SHOWALL = false;
 
 	ctx.strokeStyle = "#fee";
 	if (SHOWALL) voi.triangles.forEach(function (t) {
@@ -443,6 +441,32 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ctx.stroke();
 	});
 	ctx.strokeStyle = "#000";
+
+	// ctx.fillStyle = "#00f";
+	// if (SHOWALL) voi.nodes.forEach(function (p) {
+	// 	ctx.fillRect(p.x, p.y, 2, 2);
+	// });
+
+	let features = [];
+	voi.seeds.forEach(p => {
+		if (p.terrain == 'mountain')
+			features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-10}, 40, 20, true, 0.5)});
+		else if (p.terrain == 'foothill')
+			features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-5}, 40, 10, true, 0.2)});
+		else if (p.terrain == 'forest') {
+			let T = 10;
+			features.push({y:p.y, draw: _ => ctx.tree(p, T)});
+			p.neighbors.forEach(nn => {
+				let n = voi.seeds[nn];
+				if (n.terrain == 'forest' && n.x > p.x && Math.random() < 0.5) {
+					let q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
+					features.push({y:q.y, draw: _ => ctx.tree(q, T)});
+				}
+			});
+		}
+	});
+	features = features.sort((a,b) => a.y - b.y);
+	features.forEach(f => f.draw());
 
 	// Show Voronoi seeds
 	if (SHOWALL) voi.seeds.forEach(function (p) {
@@ -468,31 +492,6 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		ctx.fillRect(p.x-S/2, p.y-S/2, S, S);
 	});
 
-	// ctx.fillStyle = "#00f";
-	// if (SHOWALL) voi.nodes.forEach(function (p) {
-	// 	ctx.fillRect(p.x, p.y, 2, 2);
-	// });
-
-	let features = [];
-	voi.seeds.forEach(p => {
-		if (p.terrain == 'mountain')
-			features.push({y:p.y, draw: _ => ctx.mountain(p, 40, 20, true, 0.5)});
-		else if (p.terrain == 'foothill')
-			features.push({y:p.y, draw: _ => ctx.mountain(p, 40, 10, true, 0.2)});
-		else if (p.terrain == 'forest') {
-			let T = 10;
-			features.push({y:p.y, draw: _ => ctx.tree(p, T)});
-			p.neighbors.forEach(nn => {
-				let n = voi.seeds[nn];
-				if (n.terrain == 'forest' && n.x > p.x && Math.random() < 0.5) {
-					let q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
-					features.push({y:q.y, draw: _ => ctx.tree(q, T)});
-				}
-			});
-		}
-	});
-	features = features.sort((a,b) => a.y - b.y);
-	features.forEach(f => f.draw());
 }
 
 function meander(p, n, d, a) {
