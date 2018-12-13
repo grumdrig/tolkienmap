@@ -323,7 +323,9 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	console.log(voi);
 
 	function growPatch(core, edges) {
-		var active = [pick(voi.seeds.filter(s => !s.terrain)).index];
+		let available = voi.seeds.filter(s => !s.terrain);
+		if (available.length === 0) return;
+		var active = [pick(available).index];
 		for (var i = 0; i < 30; ++i) {
 			active.map(a => voi.seeds[a].terrain = core);
 			var ns = active.reduce((p, c) => p.concat(voi.seeds[c].neighbors), []);
@@ -383,6 +385,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	ctx.strokeStyle = "#000";
 	ctx.stroke();
 
+	let shallows = [];
 	let coastEdges = [];
 	let cursor = coastline[0];
 	coastline.slice(1).forEach(p => {
@@ -392,15 +395,37 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		let swapper = clockwise(voi.nodes[cursor], voi.nodes[p], voi.seeds[voi.edges[e].seeds[0]]) ? 0 : 1;
 		voi.seeds[voi.edges[e].seeds[0 ^ swapper]].terrain = 'shallows';
 		voi.seeds[voi.edges[e].seeds[1 ^ swapper]].terrain = 'beach';
+		shallows.push(voi.seeds[voi.edges[e].seeds[0 ^ swapper]]);
 		cursor = p;
 	});
+
+	// Fill the ocean
+	let oset = shallows;
+	let num = 0;
+	while (oset.length > 0) {
+		++ num;
+		let oo = oset.pop();
+		// This test seems to work to keep the flood fill from going around
+		// the end of the coastline. It's pretty kludgey but I think the best
+		// plan is to get the coast to extend all the way to the ends of the
+		// graph.
+		let M = 20;
+		if (M <= oo.x && oo.x <= W - M &&
+			M <= oo.y && oo.y <= H - M)
+		oo.neighbors.forEach(nn => {
+			let n = voi.seeds[nn];
+			if (!n.terrain) {
+				n.terrain = 'deeps';
+				oset.push(n);
+			}
+		});
+	}
 
 	// Trace in a mountain range
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
-
 
 	var SHOWALL = true;
 
@@ -440,9 +465,9 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 		else if (p.terrain === 'beach')
 			ctx.fillStyle = "yellow";
 		else if (p.terrain === 'shallows')
-			ctx.fillStyle = "#adf";
+			ctx.fillStyle = "#bdf";
 		else if (p.terrain === 'deeps')
-			ctx.fillStyle = "#88f";
+			ctx.fillStyle = "#aaf";
 		else
 			ctx.fillStyle = "#ddd";
 		let S = 6;
@@ -537,7 +562,6 @@ function drawMap() {
 
 	// Draw compass rose in the corner
 	ctx.compassRose(W - 2 * COMPASS_R, 2 * COMPASS_R, COMPASS_R);
-
 }
 
 function Noise(scale) {

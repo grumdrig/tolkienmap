@@ -225,7 +225,7 @@ Triangulation.prototype.computeDual = function () {
       addSide(t.p3, t.p1);
    }
 
-   var es = this.edges = [];  // Elements are {p1,p2,seeds[]}, indices into nodes and seeds
+   this.edges = [];  // Elements are {p1,p2,seeds[]}, indices into nodes and seeds
    for (var k in sides) {
       var e = sides[k];
       if (e.ts.length == 1) {
@@ -245,11 +245,14 @@ Triangulation.prototype.computeDual = function () {
             end = subtract(scale(c1, 2), end);
          }
          end.edges = [];
+         // end.outside = true;  // we'll call this an outside point
          nodes.push(end);
       }
-      nodes[e.ts[0]].edges.push(es.length); // Point from nodes...
-      nodes[e.ts[1]].edges.push(es.length); // ...to edges
-      es.push({p1:e.ts[0], p2:e.ts[1], seeds: [e.p1,e.p2]});
+      nodes[e.ts[0]].edges.push(this.edges.length); // Point from nodes...
+      nodes[e.ts[1]].edges.push(this.edges.length); // ...to edges
+      let edge = {p1:e.ts[0], p2:e.ts[1], seeds: [e.p1,e.p2]};
+      // if (nodes[e.ts[1]].outside) edge.outside = true;  // we'll call an edge to an outside point an outside edge
+      this.edges.push(edge);
    }
 }
 
