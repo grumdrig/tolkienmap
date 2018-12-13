@@ -2,8 +2,10 @@
 
 "use strict";
 
-var abs = Math.abs;
+let abs = Math.abs;
+let sqrt = Math.sqrt;
 
+function vec(x, y)      { return {x:x, y:y} }
 function normalize(p)   { return scale(p, 1 / magnitude(p)) }
 function magnitude(p)   { return sqrt(p.x * p.x + p.y * p.y) }
 function subtract(p, q) { return {x: p.x - q.x, y: p.y - q.y} }
@@ -14,6 +16,20 @@ function average(p, q)  { return scale(add(p,q), 1/2) }
 function distance(p, q) { return magnitude(subtract(p, q)) }
 function midpoint(v1, v2) { return {x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2}; }
 function dist2(p, q) { var dx = p.x - q.x, dy = p.y - q.y; return dx*dx + dy*dy; }
+
+
+function dot(u, v) { return u.x * v.x + u.y * v.y; }
+function scalarCross(u, v) { return u.x * v.y - u.y * v.x; }  // sine of angle between
+function test(u, v, w) {
+  let uv = normalize(subtract(v, u)), vw = normalize(subtract(w, v));
+  console.log(u,v,w,uv,vw);
+  console.log(dot(uv,vw), scalarCross(uv,vw));
+}
+// test({x:1,y:1},{x:2,y:2},{x:3,y:3})
+// test({x:0,y:0},{x:1,y:0},{x:1,y:1})
+// test({x:0,y:0},{x:1,y:0},{x:1,y:-1})
+// test({x:0,y:0},{x:1,y:0},{x:0,y: 0.1})
+// test({x:0,y:0},{x:1,y:0},{x:0,y:-0.1})
 
 
 // Triangulation subroutine
@@ -256,6 +272,7 @@ Triangulation.prototype.computeDual = function () {
    }
 }
 
+// Returns a list of node indices
 Triangulation.prototype.findPath = function (start, goal, neighbors, dist_between, heuristic_cost_estimate) {
    if (!heuristic_cost_estimate)
       heuristic_cost_estimate = (i,j) => distance(this.nodes[i], this.nodes[j]);

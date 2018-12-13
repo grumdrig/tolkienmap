@@ -18,17 +18,15 @@ html, body {
 
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
-var PI = Math.PI;
-var pow = Math.pow;
-var sqrt = Math.sqrt;
-var cos = Math.cos;
-var sin = Math.sin;
-var abs = Math.abs;
-var ceil = Math.ceil;
-var min = Math.min;
-var max = Math.max;
-var round = Math.round;
-var rand = Math.random;
+let PI = Math.PI;
+let pow = Math.pow;
+let cos = Math.cos;
+let sin = Math.sin;
+let ceil = Math.ceil;
+let min = Math.min;
+let max = Math.max;
+let round = Math.round;
+let rand = Math.random;
 function crand(scale) { return (rand() - 0.5) * scale }
 function pick(a) {
 	if (typeof a == 'number')
@@ -170,6 +168,17 @@ function handDrawnArc(c, r, a0, a1, eccentricity) {
 	return result;
 }
 
+function handDrawn(points, eccentricity) {
+	let result = [];
+	let c = points[0];
+	points.slice(1).forEach((p,i) => {
+		let segment = handDrawnLine(c, p, eccentricity);
+		result = result.concat(segment.slice(min(1, i)));
+		c = p;
+	});
+	return result;
+}
+
 CanvasRenderingContext2D.prototype.curveTo = function (ctl, end) {
 	this.quadraticCurveTo(ctl.x, ctl.y, end.x, end.y)
 }
@@ -181,6 +190,11 @@ CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
 		this.curveTo(ps[i], average(ps[i], ps[i+1]));
 	}
 	this.curveTo(ps[ps.length - 2], ps[ps.length - 1]);
+}
+
+CanvasRenderingContext2D.prototype.doLine = function (ps) {
+	this.moveTo(ps[0].x, ps[0].y);
+	ps.slice(1).forEach(p => this.lineTo(p.x, p.y));
 }
 
 CanvasRenderingContext2D.prototype.drawBorder = function (inset) {
@@ -313,6 +327,53 @@ function clockwise(A,B,C) {
   return (C.y-A.y) * (B.x-A.x) < (B.y-A.y) * (C.x-A.x);
 }
 
+function findParallel(points, D) {
+	function perp(u, v) {
+		let uv = subtract(v, u);
+		return scale(normalize(vec(-uv.y, uv.x)), D);
+	}
+	function intersection(u, v, w, z) {
+		// Find the interesection of line through uv, and the one through wz
+		// Using Paul Draper's answer to
+		// https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
+		// Convert to ax + by = c form
+		let [a1,b1,c1] = [u.y - v.y, v.x - u.x, v.x * u.y - u.x * v.y];
+		let [a2,b2,c2] = [w.y - z.y, z.x - w.x, z.x * w.y - w.x * z.y];
+	    let D  = a1 * b2 - b1 * a2;
+	    // console.log(u,v,w,z,a1,b1,c1,a2,b2,c2);
+	    if (D === 0) {
+	    	return midpoint(v, w); // degenerate case; this is good enough
+	    } else {
+		    return vec((c1 * b2 - b1 * c2) / D,
+					   (a1 * c2 - c1 * a2) / D);
+		}
+	}
+	// console.log(intersection(vec(10,0),vec(100,0),vec(0,10),vec(0,100)));
+	let result = [];
+	let u = points[0];
+	let v = points[1];
+	result.push(add(u, perp(u,v)));
+	points.slice(2).forEach((w, i) => {
+		let isExterior = scalarCross(subtract(v, u), subtract(w, v)) * D < 0;
+		if (isExterior)	{
+			result.push(add(v, perp(u,v)));
+			result.push(add(v, perp(v,w)));
+		} else {
+			let u1 = add(u, perp(u,v));
+			let v1 = add(v, perp(u,v));
+			let v2 = add(v, perp(v,w));
+			let w2 = add(w, perp(v,w));
+			result.push(intersection(u1,v1,v2,w2));
+		}
+		u = v;
+		v = w;
+	});
+	result.push(add(v, perp(u,v)));
+	// console.log(result);
+	return result;
+}
+
+
 CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	var ctx = this;
 	var R = 20;
@@ -361,6 +422,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			dbr = abs(vi.x - W/2);
 		}
 	}
+	// Create coastline
 	var coastline = voi.findPath(tl, br,
 		function (i) {
 			var es = voi.nodes[i].edges;
@@ -380,8 +442,28 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			return d;
 		});
 
-	ctx.doSpline(coastline.map(p => voi.nodes[p]));
+	ctx.beginPath();
+	ctx.doLine(coastline.map(p => voi.nodes[p]));
 	ctx.strokeStyle = "#000";
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.doLine(findParallel(coastline.map(p => voi.nodes[p]), 6));
+	ctx.doLine(findParallel(coastline.map(p => voi.nodes[p]),-6));
+	ctx.stroke();
+
+	ctx.beginPath();
+	let t = [vec(50,100), vec(100,100), vec(200,200), vec(200,300), vec(300,300), vec(300, 400), vec(250,320),vec(200,500)];
+	ctx.doLine(t);
+	ctx.strokeStyle = "#000";
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.doLine(findParallel(t, 20));
+	ctx.strokeStyle = "#0f0";
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.doLine(findParallel(t, -20));
+	ctx.strokeStyle = "#f00";
 	ctx.stroke();
 
 	let shallows = [];
@@ -419,7 +501,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
 
-	var SHOWALL = true;
+	var SHOWALL = false;
 
 	ctx.strokeStyle = "#fee";
 	if (SHOWALL) voi.triangles.forEach(function (t) {
@@ -449,14 +531,14 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 
 	let features = [];
 	let DENSE_FOREST = true;
+	let TREE_SIZE = DENSE_FOREST ? 8 : 10;
 	voi.seeds.forEach(p => {
 		if (p.terrain == 'mountain')
 			features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-10}, 40, 20, true, 0.5)});
 		else if (p.terrain == 'foothill')
 			features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-5}, 40, 10, true, 0.2)});
 		else if (p.terrain == 'forest') {
-			let T = DENSE_FOREST ? 8 : 10;
-			features.push({y:p.y, draw: _ => ctx.tree(p, T)});
+			features.push({y:p.y, draw: _ => ctx.tree(p, TREE_SIZE)});
 			p.neighbors.forEach(nn => {
 				let n = voi.seeds[nn];
 				var q;
@@ -468,7 +550,7 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 						if (n.x > p.x && Math.random() < 0.5)
 							q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
 					}
-					if (q) features.push({y:q.y, draw: _ => ctx.tree(q, T)});
+					if (q) features.push({y:q.y, draw: _ => ctx.tree(q, TREE_SIZE)});
 				}
 			});
 		}
