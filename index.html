@@ -173,7 +173,7 @@ function handDrawnArc(c, r, a0, a1, eccentricity) {
 
 function handDrawn(points, eccentricity = 5) {
 	let c = points[0];
-	let result = [c];
+	let result = points.isLoop ? [] : [c];
 	points.slice(1).forEach((p,i) => {
 		let nsegments = 1 + floor(distance(c, p) / 50);
 		let step = scale(subtract(p, c), 1/nsegments);
@@ -184,6 +184,10 @@ function handDrawn(points, eccentricity = 5) {
 		result.push(add(p, scale(normal, crand(eccentricity))));
 		c = p;
 	});
+	if (points.isLoop) {
+		result.unshift(result[result.length - 1]);
+		result.isLoop = true;
+	}
 	return result;
 }
 
@@ -362,10 +366,11 @@ function findParallel(points, D) {
 		return scale(normalize(vec(-uv.y, uv.x)), D);
 	}
 	let result = [];
-	let u = points[0];
-	let v = points[1];
-	result.push(add(u, perp(u,v)));
-	points.slice(2).forEach((w, i) => {
+	let isLoop = (points[0] === points[points.length - 1]);
+	let u = points[isLoop ? points.length - 2 : 0];
+	let v = points[isLoop ? 0                 : 1];
+	if (!isLoop) result.push(add(u, perp(u,v)));
+	points.slice(isLoop ? 1 : 2).forEach((w, i) => {
 		let isExterior = scalarCross(subtract(v, u), subtract(w, v)) * D < 0;
 		if (isExterior)	{
 			result.push(add(v, perp(u,v)));
@@ -381,8 +386,10 @@ function findParallel(points, D) {
 		u = v;
 		v = w;
 	});
-	result.push(add(v, perp(u,v)));
+	if (!isLoop) result.push(add(v, perp(u,v)));
+	if (isLoop) result.push(result[0]);
 	// console.log(result);
+	result.isLoop = isLoop;
 	return result;
 }
 
@@ -396,12 +403,11 @@ function pointOnSegment(p, s, t) {
 
 // TDDO: Should keep sections where lines cross back over in between the crossover
 function removeCrossovers(points) {
-	// console.log(points);
 	let result = [];  // multiple list of points
 	for (let i = 0; i < points.length - 1;) {
 		result.push(points[i]);
 		let nexti = i + 1;
-		for (let j = points.length - 2; j > i + 1 ; --j) {
+		for (let j = points.length - (points.isLoop ? 3 : 2); j > i + 1 ; --j) {
 			// console.log(i,j);
 			let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
 			// console.log(i,j,intersection);
@@ -459,6 +465,15 @@ function network(ctx, x, y, w, h) {
 	// Designate ocean
 	voi.seeds.filter(s => !s.terrain && noise(s.x, s.y) < 0.3)
 		.forEach(s => s.terrain = 'deeps');
+
+	// Single ocean point for testing
+	// for (let s of voi.seeds) {
+	// 	if (distance(vec(200,200),s) < 100) {
+	// 		s.terrain = 'deeps';
+	// 		break;
+	// 	}
+	// }
+
 	// Edge of water is shallows
 	voi.seeds.filter(s => s.terrain === 'deeps')
 		.filter(s => s.neighbors.map(n => voi.seeds[n]).filter(n => n.terrain !== 'deeps').length > 0)
@@ -585,11 +600,11 @@ function network(ctx, x, y, w, h) {
 
 		ctx.beginPath();
 		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast, 6), E)));
-		ctx.strokeStyle = "#f00";
+		// ctx.strokeStyle = "#f00";
 		ctx.stroke();
 		ctx.beginPath();
 		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast,-6), E)));
-		ctx.strokeStyle = "#0f0";
+		// ctx.strokeStyle = "#0f0";
 		ctx.stroke();
 
 		/*
