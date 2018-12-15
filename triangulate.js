@@ -37,8 +37,9 @@ function scalarCross(u, v) { return u.x * v.y - u.y * v.x; }  // sine of angle b
 // Returned is a list of triangular faces in the array
 // These triangles are arranged in a consistent clockwise order.
 // Members:
-//   seeds:     [{x,y: position;
-//                neighbors: [indices into seeds}] voronoi points
+//   seeds:     x,y: position;           voronoi points
+//              neighbors[index]=>edge   indices of neighbor seeds to edge dividing them
+//              edges[index]=>seed       indices of edges to neighbor seed
 //   triangles: [{p1,p2,p3: indices into seeds}]   delauny triangulation
 //   nodes:     [{x,y: position; edges:[3 indices into edges]}]                  corners in voronoi graph
 //   edges:     [{p1,p2: indices into nodes}]      edges in voronoi graph
@@ -241,6 +242,8 @@ Triangulation.prototype.computeDual = function () {
    }
 
    this.edges = [];  // Elements are {p1,p2,seeds[]}, indices into nodes and seeds
+   // this.seeds.forEach(s => [s.edges,s.neighbors] = [{},{}]);  // Each seed has a mapping from edges to the neighbor accross it
+   this.seeds.forEach(s => s.edges = {});  // Each seed has a mapping from edges to the neighbor accross it
    for (var k in sides) {
       var e = sides[k];
       if (e.ts.length == 1) {
@@ -265,7 +268,11 @@ Triangulation.prototype.computeDual = function () {
       }
       nodes[e.ts[0]].edges.push(this.edges.length); // Point from nodes...
       nodes[e.ts[1]].edges.push(this.edges.length); // ...to edges
-      let edge = {p1:e.ts[0], p2:e.ts[1], seeds: [e.p1,e.p2]};
+      let edge = {p1:e.ts[0], p2:e.ts[1], seeds: [e.p1,e.p2]};  // Point from edge to nodes and seeds
+      this.seeds[e.p1].edges[this.edges.length] = e.p2;  // Point from seeds...
+      this.seeds[e.p2].edges[this.edges.length] = e.p1;  // ...accross edges to neighbors
+      // this.seeds[e.p1].neighbors[e.p2] = this.edges.length;  // Point from seeds...
+      // this.seeds[e.p2].neighbors[e.p1] = this.edges.length;  // ...through neighbors to edges
       if (nodes[e.ts[1]].outside) edge.outside = true;  // we'll call an edge to an outside point an outside edge
       this.edges.push(edge);
    }

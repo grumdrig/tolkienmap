@@ -43,6 +43,8 @@ var W = canvas.width  = window.innerWidth;
 var H = canvas.height = window.innerHeight;
 
 let COMPASS_R = 45;
+let SHOWALL = true;
+
 
 // Draw the mountains
 CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakiness) {
@@ -418,9 +420,7 @@ function removeCrossovers(points) {
 	return result;
 }
 
-
-CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
-	var ctx = this;
+function network(ctx, x, y, w, h) {
 	var R = 20;
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
@@ -451,7 +451,71 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			p.terrain = 'compass';
 	});
 
+	// Noise function is here for future use depending on how map gen is going to work in the long run
+	// It isn't used now
+	let noise = Noise(20);
+	// noise.show(ctx);
 
+	// Designate ocean
+	voi.seeds.filter(s => !s.terrain && noise(s.x, s.y) < 0.3)
+		.forEach(s => s.terrain = 'deeps');
+	// Edge of water is shallows
+	voi.seeds.filter(s => s.terrain === 'deeps')
+		.filter(s => s.neighbors.map(n => voi.seeds[n]).filter(n => n.terrain !== 'deeps').length > 0)
+		.forEach(s => s.terrain = 'shallows');
+	// Edge of land is beach
+	let coastedges = new Set();
+	voi.seeds.filter(s => s.terrain === 'shallows').forEach(s => {
+		for (let ne in s.edges) {
+			let ni = s.edges[ne];
+			if (!voi.seeds[ni].terrain)
+				voi.seeds[ni].terrain = 'beach';
+			if (voi.seeds[ni].terrain === 'beach')
+				coastedges.add(ne);
+		}
+	});
+	// console.log(coastedges);
+
+	// Find coastlines
+	let coastlines = [];
+	while (coastedges.size > 0) {
+		var ne; for (ne of coastedges) { coastedges.delete(ne); break; }  // pop
+		let e = voi.edges[ne];
+		let coast = [e.p1, e.p2];
+		let added = true;
+		while (added) {
+			added = false;
+			for (let ce of coastedges) {
+				let c = voi.edges[ce];
+				if (c.p1 == coast[0]) {
+					coast.unshift(c.p2);
+					coastedges.delete(ce);
+					added = true;
+				} else if (c.p2 == coast[0]) {
+					coast.unshift(c.p1);
+					coastedges.delete(ce);
+					added = true;
+				} else if (c.p1 == coast[coast.length - 1]) {
+					coast.push(c.p2);
+					coastedges.delete(ce);
+					added = true;
+				} else if (c.p2 == coast[coast.length - 1]) {
+					coast.push(c.p1);
+					coastedges.delete(ce);
+					added = true;
+				}
+				if (coast[0] === coast[coast.length - 1]) {
+					added = false; // end loop
+					break;
+				}
+			}
+		}
+		coastlines.push(coast);
+	}
+
+	// console.log(coastlines);
+
+	/*
 	// Find coastline endpoints
 	var tl = 0, dtl = Number.POSITIVE_INFINITY;
 	var br = voi.nodes.length - 1, dbr = Number.POSITIVE_INFINITY;
@@ -509,34 +573,43 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 	// ctx.stroke();
 
 	// crash();
+	*/
 
+	coastlines.forEach(coastline => {
+		let E = 2;
+		let coast = coastline.map(p => voi.nodes[p]);
+		ctx.beginPath();
+		ctx.doLine(removeCrossovers(handDrawn(coast, E)));
+		ctx.strokeStyle = "#000";
+		ctx.stroke();
 
-	let E = 2;
-	let coast = coastline.map(p => voi.nodes[p]);
-	ctx.beginPath();
-	ctx.doLine(removeCrossovers(handDrawn(coast, E)));
-	ctx.strokeStyle = "#000";
-	ctx.stroke();
+		ctx.beginPath();
+		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast, 6), E)));
+		ctx.strokeStyle = "#f00";
+		ctx.stroke();
+		ctx.beginPath();
+		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast,-6), E)));
+		ctx.strokeStyle = "#0f0";
+		ctx.stroke();
 
-	ctx.beginPath();
-	ctx.doLine(removeCrossovers(handDrawn(findParallel(coast, 6), E)));
-	ctx.doLine(removeCrossovers(handDrawn(findParallel(coast,-6), E)));
-	ctx.stroke();
-
-	let shallows = [];
-	let coastEdges = [];
-	let cursor = coastline[0];
-	coastline.slice(1).forEach(p => {
-		let e = voi.nodes[p].edges.filter(e => (voi.edges[e].p1 == cursor && voi.edges[e].p2 == p) ||
-               								   (voi.edges[e].p2 == cursor && voi.edges[e].p1 == p))[0];
-		// Need a way to decide which side is land and which is sea
-		let swapper = clockwise(voi.nodes[cursor], voi.nodes[p], voi.seeds[voi.edges[e].seeds[0]]) ? 0 : 1;
-		voi.seeds[voi.edges[e].seeds[0 ^ swapper]].terrain = 'shallows';
-		voi.seeds[voi.edges[e].seeds[1 ^ swapper]].terrain = 'beach';
-		shallows.push(voi.seeds[voi.edges[e].seeds[0 ^ swapper]]);
-		cursor = p;
+		/*
+		let shallows = [];
+		let coastEdges = [];
+		let cursor = coastline[0];
+		coastline.slice(1).forEach(p => {
+			let e = voi.nodes[p].edges.filter(e => (voi.edges[e].p1 == cursor && voi.edges[e].p2 == p) ||
+	               								   (voi.edges[e].p2 == cursor && voi.edges[e].p1 == p))[0];
+			// Need a way to decide which side is land and which is sea
+			let swapper = clockwise(voi.nodes[cursor], voi.nodes[p], voi.seeds[voi.edges[e].seeds[0]]) ? 0 : 1;
+			voi.seeds[voi.edges[e].seeds[0 ^ swapper]].terrain = 'shallows';
+			voi.seeds[voi.edges[e].seeds[1 ^ swapper]].terrain = 'beach';
+			shallows.push(voi.seeds[voi.edges[e].seeds[0 ^ swapper]]);
+			cursor = p;
+		});
+		*/
 	});
 
+	/*
 	// Fill the ocean
 	let oset = shallows;
 	let num = 0;
@@ -551,14 +624,13 @@ CanvasRenderingContext2D.prototype.network = function (x, y, w, h) {
 			}
 		});
 	}
+	*/
 
 	// Trace in a mountain range
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
-
-	var SHOWALL = false;
 
 	ctx.strokeStyle = "#fee";
 	if (SHOWALL) voi.triangles.forEach(function (t) {
@@ -699,13 +771,8 @@ function drawMap() {
 	//  	ctx.doSpline(meander({x:W/2, y:0}, 10, H * 1.25, PI/2));
 	// ctx.stroke();
 
-	// Test of voronoi tiling generation
-	ctx.network(0, 0, W, H);
-
-	// Noise function is here for future use depending on how map gen is going to work in the long run
-	// It isn't used now
-	// let noise = Noise(20);
-	// noise.show(canvas.getContext("2d"));
+	// Generate map using voronoi tiling
+	network(ctx, 0, 0, W, H);
 
 	// Draw compass rose in the corner
 	ctx.compassRose(W - 2 * COMPASS_R, 2 * COMPASS_R, COMPASS_R);
