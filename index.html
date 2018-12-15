@@ -463,7 +463,18 @@ function network(ctx, x, y, w, h) {
 	// noise.show(ctx);
 
 	// Designate ocean
-	voi.seeds.filter(s => !s.terrain && noise(s.x, s.y) < 0.3)
+	// Figure out where the threshold should be
+	let remaining = 0.25;  // target this proportion of map to be ocean
+	let threshold = 0;
+	for (let b = 0; b < 10; ++b) {
+		if (remaining < noise.histogram[b]) {
+			threshold = (b + remaining / noise.histogram[b]) / 10;
+			break;
+		} else {
+			remaining -= noise.histogram[b];
+		}
+	}
+	voi.seeds.filter(s => !s.terrain && noise(s.x, s.y) < threshold)
 		.forEach(s => s.terrain = 'deeps');
 
 	// Single ocean point for testing
@@ -591,19 +602,20 @@ function network(ctx, x, y, w, h) {
 	*/
 
 	coastlines.forEach(coastline => {
-		let E = 2;
+		let ECCENTRICIY = 2;
+		let PARADIST = 4;
 		let coast = coastline.map(p => voi.nodes[p]);
 		ctx.beginPath();
-		ctx.doLine(removeCrossovers(handDrawn(coast, E)));
+		ctx.doLine(removeCrossovers(handDrawn(coast, ECCENTRICIY)));
 		ctx.strokeStyle = "#000";
 		ctx.stroke();
 
 		ctx.beginPath();
-		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast, 6), E)));
+		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast, PARADIST), ECCENTRICIY)));
 		// ctx.strokeStyle = "#f00";
 		ctx.stroke();
 		ctx.beginPath();
-		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast,-6), E)));
+		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast,-PARADIST), ECCENTRICIY)));
 		// ctx.strokeStyle = "#0f0";
 		ctx.stroke();
 
@@ -863,6 +875,11 @@ function Noise(scale) {
       sigma *= persistence;
   	}
 
+  	// Rescale to [0, 1]
+  	let minimum = points.reduce((a,c) => min(a,c));
+  	let maximum = points.reduce((a,c) => max(a,c));
+  	points = points.map(p => (p - minimum) / (maximum - minimum));
+
 	var result = function (x, y) {
 		return pt(x / scale >> 0, y / scale >> 0);
 	}
@@ -877,7 +894,10 @@ function Noise(scale) {
 	  			ctx.fillRect(x * scale, y * scale, scale, scale);
 	  		}
 	  	}
-  	}
+  	};
+
+  	result.histogram = {};
+  	points.map(v => floor(v * 10)).forEach(v => result.histogram[v] = (result.histogram[v] || 0) + 1/points.length);
 
 	return result;
 }
