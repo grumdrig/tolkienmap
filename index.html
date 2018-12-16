@@ -43,7 +43,7 @@ var W = canvas.width  = window.innerWidth;
 var H = canvas.height = window.innerHeight;
 
 let COMPASS_R = 45;
-let SHOWALL = true;
+let SHOWALL = false;
 
 
 // Draw the mountains
@@ -366,7 +366,8 @@ function findParallel(points, D) {
 		return scale(normalize(vec(-uv.y, uv.x)), D);
 	}
 	let result = [];
-	let isLoop = (points[0] === points[points.length - 1]);
+	let isLoop = dist2(points[0], points[points.length - 1]) ==- 0;
+	console.log(isLoop);
 	let u = points[isLoop ? points.length - 2 : 0];
 	let v = points[isLoop ? 0                 : 1];
 	if (!isLoop) result.push(add(u, perp(u,v)));
@@ -503,9 +504,11 @@ function network(ctx, x, y, w, h) {
 		.forEach(s => s.terrain = 'deeps');
 
 	// Single ocean point for testing
+	// voi.seeds.filter(s => s.terrain === 'deeps').forEach(s => delete s.terrain);
 	// for (let s of voi.seeds) {
 	// 	if (distance(vec(200,200),s) < 100) {
 	// 		s.terrain = 'deeps';
+	// 		s.neighbors.forEach(n => voi.seeds[n].terrain = 'deeps');
 	// 		break;
 	// 	}
 	// }
@@ -635,6 +638,8 @@ function network(ctx, x, y, w, h) {
 	// coastlines = [[//vec( 50,100), vec(100,100), vec(200,200),
 	// 			vec(200,300),
 	// 		 	   vec(300,300), vec(300, 400), vec(250,220),vec(200,500)]];
+
+	// coastlines = [[vec(200,100),vec(300,200),vec(200,300),vec(100,200),vec(200,100)]];
 
 	coastlines = removeCrossovers(coastlines);
 
