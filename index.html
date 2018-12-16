@@ -401,29 +401,54 @@ function pointOnSegment(p, s, t) {
 	       min(s.y, t.y) <= p.y && p.y <= max(s.y, t.y);
 }
 
-// TDDO: Should keep sections where lines cross back over in between the crossover
-function removeCrossovers(points) {
-	let result = [];  // multiple list of points
-	for (let i = 0; i < points.length - 1;) {
-		result.push(points[i]);
-		let nexti = i + 1;
-		for (let j = points.length - (points.isLoop ? 3 : 2); j > i + 1 ; --j) {
-			// console.log(i,j);
-			let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
-			// console.log(i,j,intersection);
-			if (pointOnSegment(intersection, points[i], points[i+1]) &&
-				pointOnSegment(intersection, points[j], points[j+1])) {
-				// intersection is within segments
-				// console.log("on", points[i], points[i+1], points[j], points[j+1]);
-				result.push(intersection);
-				nexti = j + 1;
-				break;
+// TDDO: This is very slow sometimes
+function removeCrossovers(chains) {
+	let results = [];  // multiple list of points
+	chains.forEach(removeLoops);
+	function removeLoops(points) {
+		let result = [];
+		for (let i = 0; i < points.length - 1;) {
+			result.push(points[i]);
+			let nexti = i + 1;
+			for (let j = points.length - ((points.isLoop && i == 0) ? 3 : 2); j > i + 1 ; --j) {
+				// console.log(i,j);
+				let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
+				// console.log(i,j,intersection);
+				if (pointOnSegment(intersection, points[i], points[i+1]) &&
+					pointOnSegment(intersection, points[j], points[j+1])) {
+					// intersection is within segments
+					// console.log("on", points[i], points[i+1], points[j], points[j+1]);
+					result.push(intersection);
+					nexti = j + 1;
+					findLoop(points.slice(i, j+2));
+					break;
+				}
+			}
+			i = nexti;
+		}
+		result.push(points[points.length - 1]);
+		results.push(result);
+	}
+	function findLoop(points) {
+		let result = [];
+		// console.log("FIND", points);
+		for (let i = 0; i < points.length - 1; i++) {
+			for (let j = points.length - (i == 0 ? 3 : 2); j > i + 1 ; --j) {
+				let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
+				if (pointOnSegment(intersection, points[i], points[i+1]) &&
+					pointOnSegment(intersection, points[j], points[j+1])) {
+					// intersection is within segments
+					let loop = points.slice(i, j+2);
+					// console.log("LOOP", loop);
+					loop[0] = loop[loop.length - 1] = intersection;
+					loop.isLoop = true;
+					removeLoops(loop);
+					return;
+				}
 			}
 		}
-		i = nexti;
 	}
-	result.push(points[points.length - 1]);
-	return result;
+	return results;
 }
 
 function network(ctx, x, y, w, h) {
@@ -601,22 +626,28 @@ function network(ctx, x, y, w, h) {
 	// crash();
 	*/
 
-	coastlines.forEach(coastline => {
-		let ECCENTRICIY = 2;
-		let PARADIST = 4;
-		let coast = coastline.map(p => voi.nodes[p]);
+	let ECCENTRICIY = 2;
+	let PARADIST = 7;
+	coastlines = coastlines.map(coastline => handDrawn(coastline.map(p => voi.nodes[p]), ECCENTRICIY));
+
+	// coastlines = [[//vec( 50,100), vec(100,100), vec(200,200),
+	// 			vec(200,300),
+	// 		 	   vec(300,300), vec(300, 400), vec(250,220),vec(200,500)]];
+
+	coastlines = removeCrossovers(coastlines);
+
+
+	coastlines.forEach(coast => {
 		ctx.beginPath();
-		ctx.doLine(removeCrossovers(handDrawn(coast, ECCENTRICIY)));
+		ctx.doLine(coast);
 		ctx.strokeStyle = "#000";
 		ctx.stroke();
 
+		let parallels = [PARADIST, -PARADIST].map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
+		parallels = removeCrossovers(parallels);
+
 		ctx.beginPath();
-		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast, PARADIST), ECCENTRICIY)));
-		// ctx.strokeStyle = "#f00";
-		ctx.stroke();
-		ctx.beginPath();
-		ctx.doLine(removeCrossovers(handDrawn(findParallel(coast,-PARADIST), ECCENTRICIY)));
-		// ctx.strokeStyle = "#0f0";
+		parallels.forEach(p => ctx.doLine(p));
 		ctx.stroke();
 
 		/*
