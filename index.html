@@ -533,6 +533,9 @@ function network(ctx, x, y, w, h) {
 		var ne; for (ne of coastedges) { coastedges.delete(ne); break; }  // pop
 		let e = voi.edges[ne];
 		let coast = [e.p1, e.p2];
+		let shallownode = e.seeds.map(s => voi.seeds[s]).filter(s => s.terrain == 'shallows')[0];
+		if (clockwise(voi.nodes[coast[0]], voi.nodes[coast[1]], shallownode))
+			coast.reverse();
 		let added = true;
 		while (added) {
 			added = false;
@@ -627,7 +630,6 @@ function network(ctx, x, y, w, h) {
 	*/
 
 	let ECCENTRICIY = 2;
-	let PARADIST = 7;
 	coastlines = coastlines.map(coastline => handDrawn(coastline.map(p => voi.nodes[p]), ECCENTRICIY));
 
 	// coastlines = [[//vec( 50,100), vec(100,100), vec(200,200),
@@ -640,14 +642,16 @@ function network(ctx, x, y, w, h) {
 	coastlines.forEach(coast => {
 		ctx.beginPath();
 		ctx.doLine(coast);
+		ctx.lineWidth = 2;
 		ctx.strokeStyle = "#000";
 		ctx.stroke();
 
-		let parallels = [PARADIST, -PARADIST].map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
+		let parallels = [5, 10].map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
 		parallels = removeCrossovers(parallels);
 
 		ctx.beginPath();
 		parallels.forEach(p => ctx.doLine(p));
+		ctx.lineWidth = 1;
 		ctx.stroke();
 
 		/*
