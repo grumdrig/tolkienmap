@@ -43,7 +43,7 @@ var W = canvas.width  = window.innerWidth;
 var H = canvas.height = window.innerHeight;
 
 let COMPASS_R = 45;
-let SHOWALL = false;
+let SHOWALL = true;
 
 
 // Draw the mountains
@@ -172,15 +172,20 @@ function handDrawnArc(c, r, a0, a1, eccentricity) {
 }
 
 function handDrawn(points, eccentricity = 5) {
+	// if (points) return points;
 	let c = points[0];
 	let result = points.isLoop ? [] : [c];
 	points.slice(1).forEach((p,i) => {
+		/*
 		let nsegments = 1 + floor(distance(c, p) / 50);
 		let step = scale(subtract(p, c), 1/nsegments);
+		*/
 		var normal = normalize(vec(c.y-p.y, p.x-c.x));
+		/*
 		for (let i = 1; i < nsegments; ++i) {
 			result.push(add(add(c, scale(step, i)), scale(normal, crand(eccentricity))));
 		}
+		*/
 		result.push(add(p, scale(normal, crand(eccentricity))));
 		c = p;
 	});
@@ -188,6 +193,7 @@ function handDrawn(points, eccentricity = 5) {
 		result.unshift(result[result.length - 1]);
 		result.isLoop = true;
 	}
+	// console.log("HAND", points, result);
 	return result;
 }
 
@@ -367,7 +373,7 @@ function findParallel(points, D) {
 	}
 	let result = [];
 	let isLoop = dist2(points[0], points[points.length - 1]) ==- 0;
-	console.log(isLoop);
+	// console.log(isLoop);
 	let u = points[isLoop ? points.length - 2 : 0];
 	let v = points[isLoop ? 0                 : 1];
 	if (!isLoop) result.push(add(u, perp(u,v)));
@@ -389,7 +395,7 @@ function findParallel(points, D) {
 	});
 	if (!isLoop) result.push(add(v, perp(u,v)));
 	if (isLoop) result.push(result[0]);
-	// console.log(result);
+	// console.log('perp',points,result);
 	result.isLoop = isLoop;
 	return result;
 }
@@ -403,8 +409,11 @@ function pointOnSegment(p, s, t) {
 }
 
 // TDDO: This is very slow sometimes
+// TODO: This fails if you start at a part that should be removed - instead the good stuff gets removed
 function removeCrossovers(chains) {
+	if (chains) return chains;
 	let results = [];  // multiple list of points
+	let rl = 0, fl = 0;
 	chains.forEach(removeLoops);
 	function removeLoops(points) {
 		let result = [];
@@ -412,6 +421,7 @@ function removeCrossovers(chains) {
 			result.push(points[i]);
 			let nexti = i + 1;
 			for (let j = points.length - ((points.isLoop && i == 0) ? 3 : 2); j > i + 1 ; --j) {
+		rl++;
 				// console.log(i,j);
 				let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
 				// console.log(i,j,intersection);
@@ -438,6 +448,7 @@ function removeCrossovers(chains) {
 				let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
 				if (pointOnSegment(intersection, points[i], points[i+1]) &&
 					pointOnSegment(intersection, points[j], points[j+1])) {
+		fl++;
 					// intersection is within segments
 					let loop = points.slice(i, j+2);
 					// console.log("LOOP", loop);
@@ -449,6 +460,7 @@ function removeCrossovers(chains) {
 			}
 		}
 	}
+	console.log("RL FL", rl, fl, chains, results);
 	return results;
 }
 
@@ -504,14 +516,17 @@ function network(ctx, x, y, w, h) {
 		.forEach(s => s.terrain = 'deeps');
 
 	// Single ocean point for testing
-	// voi.seeds.filter(s => s.terrain === 'deeps').forEach(s => delete s.terrain);
-	// for (let s of voi.seeds) {
-	// 	if (distance(vec(200,200),s) < 100) {
-	// 		s.terrain = 'deeps';
-	// 		s.neighbors.forEach(n => voi.seeds[n].terrain = 'deeps');
-	// 		break;
-	// 	}
-	// }
+	let SINGLE_OCEAN_TEST = false;
+	if (SINGLE_OCEAN_TEST) {
+		voi.seeds.filter(s => s.terrain === 'deeps').forEach(s => delete s.terrain);
+		for (let s of voi.seeds) {
+			if (distance(vec(200,200),s) < 100) {
+				s.terrain = 'deeps';
+				s.neighbors.forEach(n => voi.seeds[n].terrain = 'deeps');
+				break;
+			}
+		}
+	}
 
 	// Edge of water is shallows
 	voi.seeds.filter(s => s.terrain === 'deeps')
@@ -521,6 +536,12 @@ function network(ctx, x, y, w, h) {
 	let coastedges = new Set();
 	voi.seeds.filter(s => s.terrain === 'shallows').forEach(s => {
 		for (let ne in s.edges) {
+			let e = voi.edges[ne], p1 = voi.nodes[e.p1], p2 = voi.nodes[e.p2];
+			if (min(p1.x, p2.x) >= W || max(p1.x, p2.x) < 0 ||
+				min(p1.y, p2.y) >= H || max(p1.y, p2.y) < 0) {
+				// Edge is entirely off the map
+				continue;
+			}
 			let ni = s.edges[ne];
 			if (!voi.seeds[ni].terrain)
 				voi.seeds[ni].terrain = 'beach';
@@ -567,6 +588,10 @@ function network(ctx, x, y, w, h) {
 				}
 			}
 		}
+		if (coast[0] == coast[coast.length - 1]) {
+			coast.isLoop = true;
+		}
+
 		coastlines.push(coast);
 	}
 
@@ -632,30 +657,33 @@ function network(ctx, x, y, w, h) {
 	// crash();
 	*/
 
+
 	let ECCENTRICIY = 2;
 	coastlines = coastlines.map(coastline => handDrawn(coastline.map(p => voi.nodes[p]), ECCENTRICIY));
 
-	// coastlines = [[//vec( 50,100), vec(100,100), vec(200,200),
-	// 			vec(200,300),
-	// 		 	   vec(300,300), vec(300, 400), vec(250,220),vec(200,500)]];
-
-	// coastlines = [[vec(200,100),vec(300,200),vec(200,300),vec(100,200),vec(200,100)]];
-
 	coastlines = removeCrossovers(coastlines);
 
+	// coastlines = [[vec( 50,100), vec(100,100), vec(200,200),
+	// 			  vec(200,300), vec(300,300), vec(310, 400), vec(305, 405), vec(300, 400), vec(250,220),vec(200,500)]];
+	// coastlines = [[vec(200,100),vec(300,200),vec(200,300),vec(100,200),vec(200,100)]];
+	// coastlines[0].isLoop = true;
+
+	console.log(coastlines.length);
 
 	coastlines.forEach(coast => {
 		ctx.beginPath();
 		ctx.doLine(coast);
-		ctx.lineWidth = 2;
+		ctx.lineWidth = 1.5;
 		ctx.strokeStyle = "#000";
 		ctx.stroke();
 
-		let parallels = [5, 10].map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
+		let parallels = [5, 10].map(d => findParallel(coast, d));
 		parallels = removeCrossovers(parallels);
+		parallels = parallels.map(c => handDrawn(c, ECCENTRICIY));
 
 		ctx.beginPath();
 		parallels.forEach(p => ctx.doLine(p));
+		ctx.strokeStyle = "#444";
 		ctx.lineWidth = 1;
 		ctx.stroke();
 
