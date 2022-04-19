@@ -451,7 +451,7 @@ function removeCrossovers(chains) {
 	return results;
 }
 
-function network(ctx, x, y, w, h) {
+function network(x, y, w, h) {
 	var R = 20;
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
@@ -636,53 +636,7 @@ function network(ctx, x, y, w, h) {
 
 	coastlines = removeCrossovers(coastlines);
 
-
-	coastlines.forEach(coast => {
-		ctx.beginPath();
-		ctx.doLine(coast);
-		ctx.strokeStyle = "#000";
-		ctx.stroke();
-
-		let parallels = [PARADIST, -PARADIST].map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
-		parallels = removeCrossovers(parallels);
-
-		ctx.beginPath();
-		parallels.forEach(p => ctx.doLine(p));
-		ctx.stroke();
-
-		/*
-		let shallows = [];
-		let coastEdges = [];
-		let cursor = coastline[0];
-		coastline.slice(1).forEach(p => {
-			let e = voi.nodes[p].edges.filter(e => (voi.edges[e].p1 == cursor && voi.edges[e].p2 == p) ||
-	               								   (voi.edges[e].p2 == cursor && voi.edges[e].p1 == p))[0];
-			// Need a way to decide which side is land and which is sea
-			let swapper = clockwise(voi.nodes[cursor], voi.nodes[p], voi.seeds[voi.edges[e].seeds[0]]) ? 0 : 1;
-			voi.seeds[voi.edges[e].seeds[0 ^ swapper]].terrain = 'shallows';
-			voi.seeds[voi.edges[e].seeds[1 ^ swapper]].terrain = 'beach';
-			shallows.push(voi.seeds[voi.edges[e].seeds[0 ^ swapper]]);
-			cursor = p;
-		});
-		*/
-	});
-
-	/*
-	// Fill the ocean
-	let oset = shallows;
-	let num = 0;
-	while (oset.length > 0) {
-		++ num;
-		let oo = oset.pop();
-		oo.neighbors.forEach(nn => {
-			let n = voi.seeds[nn];
-			if (!n.terrain) {
-				n.terrain = 'deeps';
-				oset.push(n);
-			}
-		});
-	}
-	*/
+	voi.coastlines = coastlines;
 
 	// Trace in a mountain range
 	growPatch('mountain', 'foothill');
@@ -690,84 +644,138 @@ function network(ctx, x, y, w, h) {
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
 
-	ctx.strokeStyle = "#fee";
-	if (SHOWALL) voi.triangles.forEach(function (t) {
-		ctx.beginPath();
-		ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
-		ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
-		ctx.lineTo(pts[t.p3].x, pts[t.p3].y);
-		ctx.lineTo(pts[t.p1].x, pts[t.p1].y);
-		// ctx.fillStyle = "#"+(Math.random()*0xFFFFFF<<0).toString(16);
-		// ctx.fill();
-		ctx.stroke();
-	});
 
-	if (SHOWALL) voi.edges.forEach(function (e) {
-		ctx.beginPath();
-		ctx.moveTo(voi.nodes[e.p1].x, voi.nodes[e.p1].y);
-		ctx.lineTo(voi.nodes[e.p2].x, voi.nodes[e.p2].y);
-		ctx.strokeStyle = e.outside ? "#0f0" : "#9f9";
-		ctx.stroke();
-	});
-	ctx.strokeStyle = "#000";
+	voi.draw = (ctx) => {
 
-	// ctx.fillStyle = "#00f";
-	// if (SHOWALL) voi.nodes.forEach(function (p) {
-	// 	ctx.fillRect(p.x, p.y, 2, 2);
-	// });
+		coastlines.forEach(coast => {
+			ctx.beginPath();
+			ctx.doLine(coast);
+			ctx.strokeStyle = "#000";
+			ctx.stroke();
 
-	let features = [];
-	let DENSE_FOREST = true;
-	let TREE_SIZE = DENSE_FOREST ? 8 : 10;
-	voi.seeds.forEach(p => {
-		if (p.terrain == 'mountain')
-			features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-10}, 40, 20, true, 0.5)});
-		else if (p.terrain == 'foothill')
-			features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-5}, 40, 10, true, 0.2)});
-		else if (p.terrain == 'forest') {
-			features.push({y:p.y, draw: _ => ctx.tree(p, TREE_SIZE)});
-			p.neighbors.forEach(nn => {
+			let parallels = [PARADIST, -PARADIST].map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
+			parallels = removeCrossovers(parallels);
+
+			ctx.beginPath();
+			parallels.forEach(p => ctx.doLine(p));
+			ctx.stroke();
+
+			/*
+			let shallows = [];
+			let coastEdges = [];
+			let cursor = coastline[0];
+			coastline.slice(1).forEach(p => {
+				let e = voi.nodes[p].edges.filter(e => (voi.edges[e].p1 == cursor && voi.edges[e].p2 == p) ||
+		               								   (voi.edges[e].p2 == cursor && voi.edges[e].p1 == p))[0];
+				// Need a way to decide which side is land and which is sea
+				let swapper = clockwise(voi.nodes[cursor], voi.nodes[p], voi.seeds[voi.edges[e].seeds[0]]) ? 0 : 1;
+				voi.seeds[voi.edges[e].seeds[0 ^ swapper]].terrain = 'shallows';
+				voi.seeds[voi.edges[e].seeds[1 ^ swapper]].terrain = 'beach';
+				shallows.push(voi.seeds[voi.edges[e].seeds[0 ^ swapper]]);
+				cursor = p;
+			});
+			*/
+		});
+
+		/*
+		// Fill the ocean
+		let oset = shallows;
+		let num = 0;
+		while (oset.length > 0) {
+			++ num;
+			let oo = oset.pop();
+			oo.neighbors.forEach(nn => {
 				let n = voi.seeds[nn];
-				var q;
-				if (n.terrain == 'forest') {
-					if (DENSE_FOREST) {
-						if (Math.random() < 0.5)
-							q = {x: (2 * p.x + n.x) / 3, y: (2 * p.y + n.y) / 3};
-					} else {
-						if (n.x > p.x && Math.random() < 0.5)
-							q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
-					}
-					if (q) features.push({y:q.y, draw: _ => ctx.tree(q, TREE_SIZE)});
+				if (!n.terrain) {
+					n.terrain = 'deeps';
+					oset.push(n);
 				}
 			});
 		}
-	});
-	features = features.sort((a,b) => a.y - b.y);
-	features.forEach(f => f.draw());
+		*/
 
-	// Show Voronoi seeds
-	if (SHOWALL) voi.seeds.forEach(function (p) {
-		if (p.terrain === 'mountain')
-			ctx.fillStyle = '#008';
-		else if (p.terrain === 'foothill')
-			ctx.fillStyle = '#88f';
-		else if (p.terrain === 'forest')
-			ctx.fillStyle = '#080';
-		else if (p.terrain === 'sparse forest')
-			ctx.fillStyle = '#8f8';
-		else if (p.terrain === 'compass')
-			ctx.fillStyle = "pink";
-		else if (p.terrain === 'beach')
-			ctx.fillStyle = "yellow";
-		else if (p.terrain === 'shallows')
-			ctx.fillStyle = "#bdf";
-		else if (p.terrain === 'deeps')
-			ctx.fillStyle = "#aaf";
-		else
-			ctx.fillStyle = "#ddd";
-		let S = 6;
-		ctx.fillRect(p.x-S/2, p.y-S/2, S, S);
-	});
+		ctx.strokeStyle = "#fee";
+		if (SHOWALL) voi.triangles.forEach(function (t) {
+			ctx.beginPath();
+			ctx.moveTo(pts[t.p1].x, pts[t.p1].y);
+			ctx.lineTo(pts[t.p2].x, pts[t.p2].y);
+			ctx.lineTo(pts[t.p3].x, pts[t.p3].y);
+			ctx.lineTo(pts[t.p1].x, pts[t.p1].y);
+			// ctx.fillStyle = "#"+(Math.random()*0xFFFFFF<<0).toString(16);
+			// ctx.fill();
+			ctx.stroke();
+		});
+
+		if (SHOWALL) voi.edges.forEach(function (e) {
+			ctx.beginPath();
+			ctx.moveTo(voi.nodes[e.p1].x, voi.nodes[e.p1].y);
+			ctx.lineTo(voi.nodes[e.p2].x, voi.nodes[e.p2].y);
+			ctx.strokeStyle = e.outside ? "#0f0" : "#9f9";
+			ctx.stroke();
+		});
+		ctx.strokeStyle = "#000";
+
+		// ctx.fillStyle = "#00f";
+		// if (SHOWALL) voi.nodes.forEach(function (p) {
+		// 	ctx.fillRect(p.x, p.y, 2, 2);
+		// });
+
+		let features = [];
+		let DENSE_FOREST = true;
+		let TREE_SIZE = DENSE_FOREST ? 8 : 10;
+		voi.seeds.forEach(p => {
+			if (p.terrain == 'mountain')
+				features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-10}, 40, 20, true, 0.5)});
+			else if (p.terrain == 'foothill')
+				features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-5}, 40, 10, true, 0.2)});
+			else if (p.terrain == 'forest') {
+				features.push({y:p.y, draw: _ => ctx.tree(p, TREE_SIZE)});
+				p.neighbors.forEach(nn => {
+					let n = voi.seeds[nn];
+					var q;
+					if (n.terrain == 'forest') {
+						if (DENSE_FOREST) {
+							if (Math.random() < 0.5)
+								q = {x: (2 * p.x + n.x) / 3, y: (2 * p.y + n.y) / 3};
+						} else {
+							if (n.x > p.x && Math.random() < 0.5)
+								q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
+						}
+						if (q) features.push({y:q.y, draw: _ => ctx.tree(q, TREE_SIZE)});
+					}
+				});
+			}
+		});
+		features = features.sort((a,b) => a.y - b.y);
+		features.forEach(f => f.draw());
+
+		// Show Voronoi seeds
+		if (SHOWALL) voi.seeds.forEach(function (p) {
+			if (p.terrain === 'mountain')
+				ctx.fillStyle = '#008';
+			else if (p.terrain === 'foothill')
+				ctx.fillStyle = '#88f';
+			else if (p.terrain === 'forest')
+				ctx.fillStyle = '#080';
+			else if (p.terrain === 'sparse forest')
+				ctx.fillStyle = '#8f8';
+			else if (p.terrain === 'compass')
+				ctx.fillStyle = "pink";
+			else if (p.terrain === 'beach')
+				ctx.fillStyle = "yellow";
+			else if (p.terrain === 'shallows')
+				ctx.fillStyle = "#bdf";
+			else if (p.terrain === 'deeps')
+				ctx.fillStyle = "#aaf";
+			else
+				ctx.fillStyle = "#ddd";
+			let S = 6;
+			ctx.fillRect(p.x-S/2, p.y-S/2, S, S);
+		});
+
+	};
+
+	return voi;
 
 }
 
@@ -781,7 +789,7 @@ function meander(p, n, d, a) {
 	return result;
 }
 
-function drawMap() {
+function drawMap(map) {
 	var ctx = canvas.getContext("2d");
 	ctx.save();
 	let REVEAL_MARGINS = false;
@@ -829,8 +837,7 @@ function drawMap() {
 	//  	ctx.doSpline(meander({x:W/2, y:0}, 10, H * 1.25, PI/2));
 	// ctx.stroke();
 
-	// Generate map using voronoi tiling
-	network(ctx, 0, 0, W, H);
+	map.draw(ctx);
 
 	// Draw compass rose in the corner
 	ctx.compassRose(W - 2 * COMPASS_R, 2 * COMPASS_R, COMPASS_R);
@@ -934,10 +941,12 @@ function Noise(scale) {
 }
 
 
+// Generate map using voronoi tiling
+let map = network(0, 0, W, H);
 
 
-canvas.addEventListener("click", drawMap);
-window.addEventListener("load", drawMap);
+canvas.addEventListener("click", e => { SHOWALL = !SHOWALL; drawMap(map) });
+window.addEventListener("load", e => drawMap(map));
 // drawMap();
 
 </script>
