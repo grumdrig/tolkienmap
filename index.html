@@ -510,6 +510,10 @@ function network(x, y, w, h) {
 	// 	}
 	// }
 
+
+	// See Marko Letic's answer here for info about JSTS for this
+	// https://stackoverflow.com/questions/1109536/an-algorithm-for-inflating-deflating-offsetting-buffering-polygons?noredirect=1&lq=1
+
 	// Edge of water is shallows
 	voi.seeds.filter(s => s.terrain === 'deeps')
 		.filter(s => s.neighbors.map(n => voi.seeds[n]).filter(n => n.terrain !== 'deeps').length > 0)
@@ -627,7 +631,8 @@ function network(x, y, w, h) {
 	*/
 
 	let ECCENTRICIY = 2;
-	let PARADIST = 7;
+	let PARADISTS = [7, -7];
+	// let PARADISTS = [-7, -14, -21, -28, -35, -42, -49, -56, -63];
 	coastlines = coastlines.map(coastline => handDrawn(coastline.map(p => voi.nodes[p]), ECCENTRICIY));
 
 	// coastlines = [[//vec( 50,100), vec(100,100), vec(200,200),
@@ -653,12 +658,14 @@ function network(x, y, w, h) {
 			ctx.strokeStyle = "#000";
 			ctx.stroke();
 
-			let parallels = [PARADIST, -PARADIST].map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
-			parallels = removeCrossovers(parallels);
+			if (PARADISTS) {
+				let parallels = PARADISTS.map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
+				parallels = removeCrossovers(parallels);
 
-			ctx.beginPath();
-			parallels.forEach(p => ctx.doLine(p));
-			ctx.stroke();
+				ctx.beginPath();
+				parallels.forEach(p => ctx.doLine(p));
+				ctx.stroke();
+			}
 
 			/*
 			let shallows = [];
