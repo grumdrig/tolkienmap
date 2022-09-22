@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8"/>
 <title>Map of Central Planet</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsts/1.2.1/jsts.min.js"></script>
+<!-- <script src="https://unpkg.com/jsts@2.9.2/dist/jsts.min.js"></script> -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jsts/2.0.5/jsts.js"></script> -->
 <style>
 html, body {
 	margin: 0;
@@ -43,7 +46,7 @@ var W = canvas.width  = window.innerWidth;
 var H = canvas.height = window.innerHeight;
 
 let COMPASS_R = 45;
-let SHOWALL = true;
+let SHOWALL = false;
 
 
 // Draw the mountains
@@ -211,6 +214,7 @@ CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
 }
 
 CanvasRenderingContext2D.prototype.doLine = function (ps) {
+	if (!ps[0]) return;
 	this.moveTo(ps[0].x, ps[0].y);
 	ps.slice(1).forEach(p => this.lineTo(p.x, p.y));
 }
@@ -366,7 +370,7 @@ function lineIntersection(u, v, w, z) {
 // console.log(lineIntersection(vec(50,80),vec(100,80),vec(283,410),vec(260,370)))
 // crash();
 
-function findParallel(points, D) {
+function findParallelOLD(points, D) {
 	function perp(u, v) {
 		let uv = subtract(v, u);
 		return scale(normalize(vec(-uv.y, uv.x)), D);
@@ -398,6 +402,32 @@ function findParallel(points, D) {
 	// console.log('perp',points,result);
 	result.isLoop = isLoop;
 	return result;
+}
+
+
+function findParallel(points, spacing) {
+	// This uses JSTS, a la:
+	// http://jsfiddle.net/Mallack/kjwf5qq4/2/
+	let isLoop = dist2(points[0], points[points.length - 1]) < 0.5;
+  let geoInput = points.map(p => new jsts.geom.Coordinate(p.x, p.y));
+
+  console.log(isLoop, points.length);
+  if (isLoop) geoInput.pop();  // to make sure it's an exact loop
+	geoInput.push(geoInput[0]);
+
+	// if (jsts.algorithm.CGAlgorithms.isCCW(geoInput)) {
+	// 	geoInput.reverse();
+	// }
+
+  let geometryFactory = new jsts.geom.GeometryFactory();
+
+  let shell = geometryFactory.createPolygon(geoInput);
+  let polygon = shell.buffer(spacing, jsts.operation.buffer.BufferParameters.CAP_FLAT);
+
+	if (polygon.shell) console.log("good", points.length); else console.log("bad");
+	if (!polygon.shell) return [];
+
+  return polygon.shell.points.coordinates;
 }
 
 
@@ -678,7 +708,7 @@ function network(ctx, x, y, w, h) {
 		ctx.stroke();
 
 		let parallels = [5, 10].map(d => findParallel(coast, d));
-		parallels = removeCrossovers(parallels);
+		// parallels = removeCrossovers(parallels);
 		parallels = parallels.map(c => handDrawn(c, ECCENTRICIY));
 
 		ctx.beginPath();
