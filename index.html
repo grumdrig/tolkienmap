@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8"/>
 <title>Map of Central Planet</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsts/1.2.1/jsts.min.js"></script>
+<!-- <script src="https://unpkg.com/jsts@2.9.2/dist/jsts.min.js"></script> -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jsts/2.0.5/jsts.js"></script> -->
 <style>
 html, body {
 	margin: 0;
@@ -175,12 +178,16 @@ function handDrawn(points, eccentricity = 5) {
 	let c = points[0];
 	let result = points.isLoop ? [] : [c];
 	points.slice(1).forEach((p,i) => {
+		/*
 		let nsegments = 1 + floor(distance(c, p) / 50);
 		let step = scale(subtract(p, c), 1/nsegments);
+		*/
 		var normal = normalize(vec(c.y-p.y, p.x-c.x));
+		/*
 		for (let i = 1; i < nsegments; ++i) {
 			result.push(add(add(c, scale(step, i)), scale(normal, crand(eccentricity))));
 		}
+		*/
 		result.push(add(p, scale(normal, crand(eccentricity))));
 		c = p;
 	});
@@ -205,6 +212,7 @@ CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
 }
 
 CanvasRenderingContext2D.prototype.doLine = function (ps) {
+	if (!ps[0]) return;
 	this.moveTo(ps[0].x, ps[0].y);
 	ps.slice(1).forEach(p => this.lineTo(p.x, p.y));
 }
@@ -360,13 +368,14 @@ function lineIntersection(u, v, w, z) {
 // console.log(lineIntersection(vec(50,80),vec(100,80),vec(283,410),vec(260,370)))
 // crash();
 
-function findParallel(points, D) {
+function findParallelOLD(points, D) {
 	function perp(u, v) {
 		let uv = subtract(v, u);
 		return scale(normalize(vec(-uv.y, uv.x)), D);
 	}
 	let result = [];
-	let isLoop = (points[0] === points[points.length - 1]);
+	let isLoop = dist2(points[0], points[points.length - 1]) ==- 0;
+	// console.log(isLoop);
 	let u = points[isLoop ? points.length - 2 : 0];
 	let v = points[isLoop ? 0                 : 1];
 	if (!isLoop) result.push(add(u, perp(u,v)));
@@ -388,9 +397,35 @@ function findParallel(points, D) {
 	});
 	if (!isLoop) result.push(add(v, perp(u,v)));
 	if (isLoop) result.push(result[0]);
-	// console.log(result);
+	// console.log('perp',points,result);
 	result.isLoop = isLoop;
 	return result;
+}
+
+
+function findParallel(points, spacing) {
+	// This uses JSTS, a la:
+	// http://jsfiddle.net/Mallack/kjwf5qq4/2/
+	let isLoop = dist2(points[0], points[points.length - 1]) < 0.5;
+  let geoInput = points.map(p => new jsts.geom.Coordinate(p.x, p.y));
+
+  console.log(isLoop, points.length);
+  if (isLoop) geoInput.pop();  // to make sure it's an exact loop
+	geoInput.push(geoInput[0]);
+
+	// if (jsts.algorithm.CGAlgorithms.isCCW(geoInput)) {
+	// 	geoInput.reverse();
+	// }
+
+  let geometryFactory = new jsts.geom.GeometryFactory();
+
+  let shell = geometryFactory.createPolygon(geoInput);
+  let polygon = shell.buffer(spacing, jsts.operation.buffer.BufferParameters.CAP_FLAT);
+
+	if (polygon.shell) console.log("good", points.length); else console.log("bad");
+	if (!polygon.shell) return [];
+
+  return polygon.shell.points.coordinates;
 }
 
 
@@ -402,6 +437,7 @@ function pointOnSegment(p, s, t) {
 }
 
 // TDDO: This is very slow sometimes
+// TODO: This fails if you start at a part that should be removed - instead the good stuff gets removed
 function removeCrossovers(chains) {
 	let results = [];  // multiple list of points
 	chains.forEach(removeLoops);
@@ -502,17 +538,22 @@ function network(x, y, w, h) {
 	voi.seeds.filter(s => !s.terrain && noise(s.x, s.y) < threshold)
 		.forEach(s => s.terrain = 'deeps');
 
+
+// See Marko Letic's answer here for info about JSTS for this
+// https://stackoverflow.com/questions/1109536/an-algorithm-for-inflating-deflating-offsetting-buffering-polygons?noredirect=1&lq=1
+
 	// Single ocean point for testing
-	// for (let s of voi.seeds) {
-	// 	if (distance(vec(200,200),s) < 100) {
-	// 		s.terrain = 'deeps';
-	// 		break;
-	// 	}
-	// }
-
-
-	// See Marko Letic's answer here for info about JSTS for this
-	// https://stackoverflow.com/questions/1109536/an-algorithm-for-inflating-deflating-offsetting-buffering-polygons?noredirect=1&lq=1
+	let SINGLE_OCEAN_TEST = false;
+	if (SINGLE_OCEAN_TEST) {
+		voi.seeds.filter(s => s.terrain === 'deeps').forEach(s => delete s.terrain);
+		for (let s of voi.seeds) {
+			if (distance(vec(200,200),s) < 100) {
+				s.terrain = 'deeps';
+				s.neighbors.forEach(n => voi.seeds[n].terrain = 'deeps');
+				break;
+			}
+		}
+	}
 
 	// Edge of water is shallows
 	voi.seeds.filter(s => s.terrain === 'deeps')
@@ -522,6 +563,12 @@ function network(x, y, w, h) {
 	let coastedges = new Set();
 	voi.seeds.filter(s => s.terrain === 'shallows').forEach(s => {
 		for (let ne in s.edges) {
+			let e = voi.edges[ne], p1 = voi.nodes[e.p1], p2 = voi.nodes[e.p2];
+			if (min(p1.x, p2.x) >= W || max(p1.x, p2.x) < 0 ||
+				min(p1.y, p2.y) >= H || max(p1.y, p2.y) < 0) {
+				// Edge is entirely off the map
+				continue;
+			}
 			let ni = s.edges[ne];
 			if (!voi.seeds[ni].terrain)
 				voi.seeds[ni].terrain = 'beach';
@@ -537,6 +584,9 @@ function network(x, y, w, h) {
 		var ne; for (ne of coastedges) { coastedges.delete(ne); break; }  // pop
 		let e = voi.edges[ne];
 		let coast = [e.p1, e.p2];
+		let shallownode = e.seeds.map(s => voi.seeds[s]).filter(s => s.terrain == 'shallows')[0];
+		if (clockwise(voi.nodes[coast[0]], voi.nodes[coast[1]], shallownode))
+			coast.reverse();
 		let added = true;
 		while (added) {
 			added = false;
@@ -565,6 +615,10 @@ function network(x, y, w, h) {
 				}
 			}
 		}
+		if (coast[0] == coast[coast.length - 1]) {
+			coast.isLoop = true;
+		}
+
 		coastlines.push(coast);
 	}
 
@@ -630,14 +684,11 @@ function network(x, y, w, h) {
 	// crash();
 	*/
 
+
 	let ECCENTRICIY = 2;
 	let PARADISTS = [7, -7];
 	// let PARADISTS = [-7, -14, -21, -28, -35, -42, -49, -56, -63];
 	coastlines = coastlines.map(coastline => handDrawn(coastline.map(p => voi.nodes[p]), ECCENTRICIY));
-
-	// coastlines = [[//vec( 50,100), vec(100,100), vec(200,200),
-	// 			vec(200,300),
-	// 		 	   vec(300,300), vec(300, 400), vec(250,220),vec(200,500)]];
 
 	coastlines = removeCrossovers(coastlines);
 
@@ -659,11 +710,13 @@ function network(x, y, w, h) {
 			ctx.stroke();
 
 			if (PARADISTS) {
-				let parallels = PARADISTS.map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
+				let parallels = [5, 10].map(d => handDrawn(findParallel(coast, d), ECCENTRICIY));
 				parallels = removeCrossovers(parallels);
 
 				ctx.beginPath();
 				parallels.forEach(p => ctx.doLine(p));
+				ctx.strokeStyle = "#444";
+				ctx.lineWidth = 1;
 				ctx.stroke();
 			}
 
