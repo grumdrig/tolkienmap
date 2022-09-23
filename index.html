@@ -368,7 +368,7 @@ function lineIntersection(u, v, w, z) {
 // console.log(lineIntersection(vec(50,80),vec(100,80),vec(283,410),vec(260,370)))
 // crash();
 
-function findParallelOLD(points, D) {
+function findParallel(points, D) {
 	function perp(u, v) {
 		let uv = subtract(v, u);
 		return scale(normalize(vec(-uv.y, uv.x)), D);
@@ -403,7 +403,7 @@ function findParallelOLD(points, D) {
 }
 
 
-function findParallel(points, spacing) {
+function findParallelNEW(points, spacing) {
 	// This uses JSTS, a la:
 	// http://jsfiddle.net/Mallack/kjwf5qq4/2/
 	let isLoop = dist2(points[0], points[points.length - 1]) < 0.5;
