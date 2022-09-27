@@ -4,10 +4,6 @@
 <meta charset="utf-8"/>
 <title>Map of Central Planet</title>
 <script src="clipper.js"></script>
-<!-- <script src="node_modules/jsts/dist/jsts.js"></script> -->
-<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jsts/1.2.1/jsts.min.js"></script> -->
-<!-- <script src="https://unpkg.com/jsts@2.9.2/dist/jsts.min.js"></script> -->
-<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jsts/2.0.5/jsts.js"></script> -->
 <style>
 html, body {
 	margin: 0;
@@ -368,49 +364,8 @@ function lineIntersection(u, v, w, z) {
 	}
 }
 
-// console.log(lineIntersection(vec(50,80),vec(100,80),vec(283,410),vec(260,370)))
-// crash();
 
-function findParallel(points, D) {
-
-	if (typeof window.ClipperLib !== 'undefined') return findParallelClipper(points, D);
-	if (typeof window.jsts !== 'undefined') return findParallelJsts(points, D);
-
-	function perp(u, v) {
-		let uv = subtract(v, u);
-		return scale(normalize(vec(-uv.y, uv.x)), D);
-	}
-	let result = [];
-	let isLoop = dist2(points[0], points.last()) ==- 0;
-	// console.log(isLoop);
-	let u = points[isLoop ? points.length - 2 : 0];
-	let v = points[isLoop ? 0                 : 1];
-	if (!isLoop) result.push(add(u, perp(u,v)));
-	points.slice(isLoop ? 1 : 2).forEach((w, i) => {
-		let isExterior = scalarCross(subtract(v, u), subtract(w, v)) * D < 0;
-		if (isExterior)	{
-			result.push(add(v, perp(u,v)));
-			result.push(add(v, scale(normalize(midpoint(normalize(subtract(v,w)), normalize(subtract(v,u)))), abs(D))))
-			result.push(add(v, perp(v,w)));
-		} else {
-			let u1 = add(u, perp(u,v));
-			let v1 = add(v, perp(u,v));
-			let v2 = add(v, perp(v,w));
-			let w2 = add(w, perp(v,w));
-			result.push(lineIntersection(u1,v1,v2,w2));
-		}
-		u = v;
-		v = w;
-	});
-	if (!isLoop) result.push(add(v, perp(u,v)));
-	if (isLoop) result.push(result[0]);
-	// console.log('perp',points,result);
-	result.isLoop = isLoop;
-	return result;
-}
-
-
-function findParallels_Clipper(points, spacing) {
+function findParallels(points, spacing) {
 	// points = [
 	// 	{ X: 100, Y: 100 },
 	// 	{ X:  50, Y: 100 },
@@ -451,68 +406,6 @@ function findParallels_Clipper(points, spacing) {
 	return solution;
 	// DrawPolygons(solution, 0x4000FF00, 0xFF009900);
 }
-
-function findParallelJsts(points, spacing) {
-	points = [
-		{ x: 100, y: 100 },
-		{ x:  50, y: 100 },
-		{ x:  50, y:  50 },
-		{ x: 100, y: 100 }];
-
-	// This uses JSTS, a la:
-	// http://jsfiddle.net/Mallack/kjwf5qq4/2/
-	let isLoop = dist2(points[0], points.last()) < 0.5;
-  let jpoints = points.map(p => new jsts.geom.Coordinate(p.x, p.y));
-
-  console.log(isLoop, points.length);
-
-  if (isLoop) {
-  	// Make sure it's an exact loop
-  	jpoints.pop();
-		jpoints.push(jpoints[0]);
-	} else {
-		jpoints.push(new jsts.geom.Coordinate(jpoints.last().x, 100000));
-		jpoints.push(new jsts.geom.Coordinate(100000, 0));
-		jpoints.push(new jsts.geom.Coordinate(jpoints[0].x, -100000));
-		jpoints.push(jpoints[0]);
-	}
-
-	// if (jsts.algorithm.CGAlgorithms.isCCW(jpoints)) {
-	// 	jpoints.reverse();
-	// }
-
-
-/*
-let overviewPathGeo = [];
-for(var i = 0; i < points.length; i++) {
-    overviewPathGeo.push(
-        [points[i].x, points[i].y]
-    );
-  }
-
-    let geoInput = {
-        type: "Polygon",
-        coordinates: overviewPathGeo //points.map(p => [p.x, p.y])
-    };
-var geoReader = new jsts.io.GeoJSONReader(),
-    geoWriter = new jsts.io.GeoJSONWriter();
-var geometry = geoReader.read(geoInput).buffer(spacing);
-var polygon = geoWriter.write(geometry);
-*/
-
-
-  let geometryFactory = new jsts.geom.GeometryFactory();
-
-  let shell = geometryFactory.createPolygon(jpoints);
-  // let polygon = shell.buffer(spacing, jsts.operation.buffer.BufferParameters.CAP_FLAT);
-	let polygon = jsts.operation.buffer.BufferOp.bufferOp(shell, spacing);//, jsts.operation.buffer.BufferParameters.CAP_FLAT);
-
-	if (polygon.shell) console.log("good", points.length); else console.log("bad", polygon);
-	if (!polygon.shell) return [];
-
-  return polygon.shell.points.coordinates;
-}
-
 
 function pointOnSegment(p, s, t) {
 	// This is assuming p in on the line through those points. Check is
@@ -623,23 +516,6 @@ function network(x, y, w, h) {
 	voi.seeds.filter(s => !s.terrain && noise(s.x, s.y) < threshold)
 		.forEach(s => s.terrain = 'deeps');
 
-
-// See Marko Letic's answer here for info about JSTS for this
-// https://stackoverflow.com/questions/1109536/an-algorithm-for-inflating-deflating-offsetting-buffering-polygons?noredirect=1&lq=1
-
-	// Single ocean point for testing
-	let SINGLE_OCEAN_TEST = false;
-	if (SINGLE_OCEAN_TEST) {
-		voi.seeds.filter(s => s.terrain === 'deeps').forEach(s => delete s.terrain);
-		for (let s of voi.seeds) {
-			if (distance(vec(200,200),s) < 100) {
-				s.terrain = 'deeps';
-				s.neighbors.forEach(n => voi.seeds[n].terrain = 'deeps');
-				break;
-			}
-		}
-	}
-
 	// Edge of water is shallows
 	voi.seeds.filter(s => s.terrain === 'deeps')
 		.filter(s => s.neighbors.map(n => voi.seeds[n]).filter(n => n.terrain !== 'deeps').length > 0)
@@ -661,7 +537,6 @@ function network(x, y, w, h) {
 				coastedges.add(ne);
 		}
 	});
-	// console.log(coastedges);
 
 	// Find coastlines
 	let coastlines = [];
@@ -735,7 +610,7 @@ function network(x, y, w, h) {
 			ctx.stroke();
 
 			if (PARADISTS) {
-				let parallels = PARADISTS.map(d => findParallels_Clipper(coast, -d));
+				let parallels = PARADISTS.map(d => findParallels(coast, -d));
 				// parallels = parallels.map(p => handDrawn(p, ECCENTRICIY));
 				// parallels = removeCrossovers(parallels);
 
