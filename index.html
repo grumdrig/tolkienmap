@@ -388,7 +388,9 @@ function findParallels(points, spacing) {
 	ClipperLib.JS.ScaleUpPaths(subj, scale);
 	let co = new ClipperLib.ClipperOffset(2, 0.25);
 	co.AddPaths(subj, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
-	co.Execute(solution, -spacing * scale);
+	console.log(ClipperLib.Clipper.Orientation(subj));
+	// let sign = ClipperLib.Clipper.Orientation(subj) ? 1 : -1;
+	co.Execute(solution, spacing * scale /* * sign*/);
 	ClipperLib.JS.ScaleDownPaths(solution, scale);
 
 	solution = solution.map(path => path.map(p => ({x:p.X, y:p.Y})));
@@ -603,7 +605,7 @@ function network(x, y, w, h) {
 
 			if (PARADISTS) {
 				ctx.lineWidth = 0.75;
-				let parallels = PARADISTS.map(d => findParallels(coast, -d));
+				let parallels = PARADISTS.map(d => findParallels(coast, d));
 
 				if (COAST_ECCENTRICIY)
 					parallels = parallels.map(p => handDrawn(p, COAST_ECCENTRICIY));
@@ -625,7 +627,7 @@ function network(x, y, w, h) {
 				ctx.textBaseline = 'middle';
 				let i = 0;
 				for (let p of coast) {
-					console.log('COAST', i, p.x, p.y);
+					// console.log('COAST', i, p.x, p.y);
 					ctx.fillText(i++, p.x, p.y);
 				}
 			}
