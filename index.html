@@ -45,6 +45,7 @@ var H = canvas.height = window.innerHeight;
 
 let COMPASS_R = 45;
 let SHOWALL = false;
+let COAST_ECCENTRICIY = 4;
 
 
 // Draw the mountains
@@ -194,6 +195,16 @@ function handDrawn(points, eccentricity = 5) {
 		result.isLoop = true;
 	}
 	return result;
+}
+
+function smoothed(points, stability, stasis) {
+	return points.map((p, i) => {
+		if (i == 0 || i == points.length - 1 || rand() < stasis) return p;
+		return {
+			x: stability * p.x + (1 - stability) * (points[i-1].x + points[i+1].x) / 2,
+			y: stability * p.y + (1 - stability) * (points[i-1].y + points[i+1].y) / 2,
+		};
+	});
 }
 
 CanvasRenderingContext2D.prototype.curveTo = function (ctl, end) {
@@ -366,28 +377,8 @@ function lineIntersection(u, v, w, z) {
 
 
 function findParallels(points, spacing) {
-	// points = [
-	// 	{ X: 100, Y: 100 },
-	// 	{ X:  50, Y: 100 },
-	// 	{ X:  50, Y:  50 },
-	// 	{ X: 100, Y: 100 }];
-
 	let isLoop = dist2(points[0], points.last()) < 0.5;
 	points = points.map(p => ({X: round(p.x), Y: round(p.y)}));
-
-/*
-
-  if (isLoop) {
-  	// Make sure it's an exact loop
-  // 	points.pop();
-		// points.push(points[0]);
-	} else {
-		points.push({X: points.last().x, Y: 100000});
-		points.push({X: 100000, Y: 0});
-		points.push({X: points[0].x, Y: -100000});
-		// points.push(points[0]);
-	}
-	*/
 
 	let subj = new ClipperLib.Paths();
 	let solution = new ClipperLib.Paths();
@@ -400,11 +391,8 @@ function findParallels(points, spacing) {
 	co.Execute(solution, -spacing * scale);
 	ClipperLib.JS.ScaleDownPaths(solution, scale);
 
-	// if (!solution[0]) return [];
-	console.log('CLIPSOLN', solution.length, solution);
 	solution = solution.map(path => path.map(p => ({x:p.X, y:p.Y})));
 	return solution;
-	// DrawPolygons(solution, 0x4000FF00, 0xFF009900);
 }
 
 function pointOnSegment(p, s, t) {
@@ -578,6 +566,12 @@ function network(x, y, w, h) {
 		}
 
 		let coastline = coast.map(p => voi.nodes[p]);
+
+		if (COAST_ECCENTRICIY)
+			coastline = handDrawn(coastline, COAST_ECCENTRICIY);
+
+		coastline = smoothed(coastline, 0.5, 0.1);
+
 		if (coast.isLoop) {
 			coastline.isLoop = true;
 		} else if (coastline[0].y < 0 && coastline.last().y >= H) {
@@ -588,9 +582,7 @@ function network(x, y, w, h) {
 		coastlines.push(coastline);
 	}
 
-	let ECCENTRICIY = 2;
 	let PARADISTS = [7, 14];
-	// coastlines = coastlines.map(coastline => handDrawn(coastline, ECCENTRICIY));
 	// coastlines = removeCrossovers(coastlines);
 
 	// Trace in a mountain range
@@ -604,23 +596,26 @@ function network(x, y, w, h) {
 
 		coastlines.forEach(coast => {
 			ctx.beginPath();
-			// ctx.lineWidth = 1;
 			ctx.doLine(coast);
 			ctx.strokeStyle = "#000";
 			ctx.stroke();
 
+
 			if (PARADISTS) {
+				ctx.lineWidth = 0.75;
 				let parallels = PARADISTS.map(d => findParallels(coast, -d));
-				// parallels = parallels.map(p => handDrawn(p, ECCENTRICIY));
+
+				if (COAST_ECCENTRICIY)
+					parallels = parallels.map(p => handDrawn(p, COAST_ECCENTRICIY));
+
 				// parallels = removeCrossovers(parallels);
 
 				for (let parallel of parallels) {
 					ctx.beginPath();
 					parallel.forEach(p => ctx.doLine(p, coast.isLoop));
-					// ctx.strokeStyle = "#444";
-					ctx.lineWidth = 0.75;
 					ctx.stroke();
 				}
+				ctx.lineWidth = 1;
 			}
 
 			if (SHOWALL) {
