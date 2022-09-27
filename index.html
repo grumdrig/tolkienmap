@@ -23,17 +23,12 @@ html, body {
 
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
-let PI = Math.PI;
-let pow = Math.pow;
-let cos = Math.cos;
-let sin = Math.sin;
-let ceil = Math.ceil;
-let floor = Math.floor;
-let min = Math.min;
-let max = Math.max;
-let round = Math.round;
-let rand = Math.random;
+const PI = Math.PI, pow = Math.pow, cos = Math.cos, sin = Math.sin,
+   		ceil = Math.ceil, floor = Math.floor, min = Math.min, max = Math.max,
+   		round = Math.round, rand = Math.random;
+
 function crand(scale) { return (rand() - 0.5) * scale }
+function irand(scale) { return floor(rand() * scale) }
 function pick(a) {
 	if (typeof a == 'number')
 		return rand() * a >> 0;
@@ -772,7 +767,8 @@ function network(x, y, w, h) {
 	let ECCENTRICIY = 2;
 	let PARADISTS = [7, 14];
 	// let PARADISTS = [-7, -14, -21, -28, -35, -42, -49, -56, -63];
-	coastlines = coastlines.map(coastline => handDrawn(coastline.map(p => voi.nodes[p]), ECCENTRICIY));
+	coastlines = coastlines.map(coastline => coastline.map(p => voi.nodes[p]));
+	// coastlines = coastlines.map(coastline => handDrawn(coastline, ECCENTRICIY));
 
 	coastlines = removeCrossovers(coastlines);
 
@@ -804,6 +800,17 @@ function network(x, y, w, h) {
 					ctx.strokeStyle = "#44a";
 					ctx.lineWidth = 1;
 					ctx.stroke();
+				}
+			}
+
+			if (SHOWALL) {
+				ctx.fillStyle = `rgb(${irand(256)},${irand(256)},${irand(256)})`;
+				ctx.font = '12px sans serif';
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
+				let i = 0;
+				for (let p of coast) {
+					ctx.fillText(i++, p.x, p.y);
 				}
 			}
 
