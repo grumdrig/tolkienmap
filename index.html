@@ -23,9 +23,14 @@ html, body {
 
 Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
+
 const PI = Math.PI, pow = Math.pow, cos = Math.cos, sin = Math.sin,
    		ceil = Math.ceil, floor = Math.floor, min = Math.min, max = Math.max,
    		round = Math.round, rand = Math.random;
+
+Array.prototype.last = function () {
+    return this[this.length - 1];
+};
 
 function crand(scale) { return (rand() - 0.5) * scale }
 function irand(scale) { return floor(rand() * scale) }
@@ -189,7 +194,7 @@ function handDrawn(points, eccentricity = 5) {
 		c = p;
 	});
 	if (points.isLoop) {
-		result.unshift(result[result.length - 1]);
+		result.unshift(result.last());
 		result.isLoop = true;
 	}
 	return result;
@@ -205,13 +210,14 @@ CanvasRenderingContext2D.prototype.doSpline = function (ps, cont) {
 	for (var i = 1; i < ps.length - 2; ++i) {
 		this.curveTo(ps[i], average(ps[i], ps[i+1]));
 	}
-	this.curveTo(ps[ps.length - 2], ps[ps.length - 1]);
+	this.curveTo(ps[ps.length - 2], ps.last());
 }
 
-CanvasRenderingContext2D.prototype.doLine = function (ps) {
+CanvasRenderingContext2D.prototype.doLine = function (ps, makeLoop) {
 	if (!ps[0]) return;
 	this.moveTo(ps[0].x, ps[0].y);
 	ps.slice(1).forEach(p => this.lineTo(p.x, p.y));
+	if (makeLoop) this.lineTo(ps[0].x, ps[0].y);
 }
 
 CanvasRenderingContext2D.prototype.drawBorder = function (inset) {
@@ -250,8 +256,8 @@ CanvasRenderingContext2D.prototype.compassRose = function (cx, cy, r) {
 		var e = 2;
 		var outer = handDrawnArc({x:cx, y:cy}, r, a0, a1, e);
 		var inner = handDrawnArc({x:cx, y:cy}, r * 0.83, a1, a0, e);
-		var con1 = handDrawnLine(outer[outer.length - 1], inner[0], e);
-		var con2 = handDrawnLine(inner[inner.length - 1], outer[0], e);
+		var con1 = handDrawnLine(outer.last(), inner[0], e);
+		var con2 = handDrawnLine(inner.last(), outer[0], e);
 		this.beginPath();
 		this.doSpline(outer);
 		this.doSpline(con1, true);
@@ -375,7 +381,7 @@ function findParallel(points, D) {
 		return scale(normalize(vec(-uv.y, uv.x)), D);
 	}
 	let result = [];
-	let isLoop = dist2(points[0], points[points.length - 1]) ==- 0;
+	let isLoop = dist2(points[0], points.last()) ==- 0;
 	// console.log(isLoop);
 	let u = points[isLoop ? points.length - 2 : 0];
 	let v = points[isLoop ? 0                 : 1];
@@ -411,7 +417,7 @@ function findParallels_Clipper(points, spacing) {
 	// 	{ X:  50, Y:  50 },
 	// 	{ X: 100, Y: 100 }];
 
-	let isLoop = dist2(points[0], points[points.length - 1]) < 0.5;
+	let isLoop = dist2(points[0], points.last()) < 0.5;
 	points = points.map(p => ({X: round(p.x), Y: round(p.y)}));
 
 /*
@@ -421,7 +427,7 @@ function findParallels_Clipper(points, spacing) {
   // 	points.pop();
 		// points.push(points[0]);
 	} else {
-		points.push({X: points[points.length - 1].x, Y: 100000});
+		points.push({X: points.last().x, Y: 100000});
 		points.push({X: 100000, Y: 0});
 		points.push({X: points[0].x, Y: -100000});
 		// points.push(points[0]);
@@ -455,7 +461,7 @@ function findParallelJsts(points, spacing) {
 
 	// This uses JSTS, a la:
 	// http://jsfiddle.net/Mallack/kjwf5qq4/2/
-	let isLoop = dist2(points[0], points[points.length - 1]) < 0.5;
+	let isLoop = dist2(points[0], points.last()) < 0.5;
   let jpoints = points.map(p => new jsts.geom.Coordinate(p.x, p.y));
 
   console.log(isLoop, points.length);
@@ -465,7 +471,7 @@ function findParallelJsts(points, spacing) {
   	jpoints.pop();
 		jpoints.push(jpoints[0]);
 	} else {
-		jpoints.push(new jsts.geom.Coordinate(jpoints[jpoints.length - 1].x, 100000));
+		jpoints.push(new jsts.geom.Coordinate(jpoints.last().x, 100000));
 		jpoints.push(new jsts.geom.Coordinate(100000, 0));
 		jpoints.push(new jsts.geom.Coordinate(jpoints[0].x, -100000));
 		jpoints.push(jpoints[0]);
@@ -541,7 +547,7 @@ function removeCrossovers(chains) {
 			}
 			i = nexti;
 		}
-		result.push(points[points.length - 1]);
+		result.push(points.last());
 		results.push(result);
 	}
 	function findLoop(points) {
@@ -555,7 +561,7 @@ function removeCrossovers(chains) {
 					// intersection is within segments
 					let loop = points.slice(i, j+2);
 					// console.log("LOOP", loop);
-					loop[0] = loop[loop.length - 1] = intersection;
+					loop[0] = loop.last() = intersection;
 					loop.isLoop = true;
 					removeLoops(loop);
 					return;
@@ -679,100 +685,38 @@ function network(x, y, w, h) {
 					coast.unshift(c.p1);
 					coastedges.delete(ce);
 					added = true;
-				} else if (c.p1 == coast[coast.length - 1]) {
+				} else if (c.p1 == coast.last()) {
 					coast.push(c.p2);
 					coastedges.delete(ce);
 					added = true;
-				} else if (c.p2 == coast[coast.length - 1]) {
+				} else if (c.p2 == coast.last()) {
 					coast.push(c.p1);
 					coastedges.delete(ce);
 					added = true;
 				}
-				if (coast[0] === coast[coast.length - 1]) {
+				if (coast[0] === coast.last()) {
 					added = false; // end loop
+					coast.isLoop = true;
 					break;
 				}
 			}
 		}
-		if (coast[0] == coast[coast.length - 1]) {
-			coast.isLoop = true;
+
+		let coastline = coast.map(p => voi.nodes[p]);
+		if (coast.isLoop) {
+			coastline.isLoop = true;
+		} else if (coastline[0].y < 0 && coastline.last().y >= H) {
+			coastline.push({x: W + 100, y: H + 100});
+			coastline.push({x: W + 100, y:    -100});
 		}
 
-		coastlines.push(coast);
+		coastlines.push(coastline);
 	}
-
-	// console.log(coastlines);
-
-	/*
-	// Find coastline endpoints
-	var tl = 0, dtl = Number.POSITIVE_INFINITY;
-	var br = voi.nodes.length - 1, dbr = Number.POSITIVE_INFINITY;
-	for (var i = 0; i < voi.nodes.length; ++i) {
-		var vi = voi.nodes[i];
-		if (!vi.outside) continue;
-		if (vi.y <= 0 && abs(vi.x - W/8) < dtl) {
-			tl = i;
-			dtl = abs(vi.x - W/8);
-		}
-		if (vi.y >= H && abs(vi.x - W/2) < dbr) {
-			br = i;
-			dbr = abs(vi.x - W/2);
-		}
-	}
-	// Create coastline
-	var coastline = voi.findPath(tl, br,
-		function (i) {
-			var es = voi.nodes[i].edges;
-			var result = new Set();
-			for (var j = 0; j < es.length; ++j) {
-				var e = voi.edges[es[j]];
-				result.add(i == e.p1 ? e.p2 : e.p1);
-			}
-			return result;
-		},
-		function (i,j) {
-			var d = distance(voi.nodes[i], voi.nodes[j]);
-			d += 6000 / distance(voi.nodes[i], {x:W/3,y:H/4});
-			d += 6000 / distance(voi.nodes[i], {x:W/3,y:H/4});
-			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
-			d += 3000 / distance(voi.nodes[j], {x:W/3,y:H});
-			return d;
-		});
-
-
-	// let xxx = [vec(0,0),vec(1,1),vec(0,1),vec(1,0)];
-	// console.log(removeCrossovers(xxx));
-
-	// ctx.beginPath();
-	// let t = [vec( 50,100), vec(100,100), vec(200,200), vec(200,300),
-	// 		 vec(300,300), vec(300, 400), vec(250,320),vec(200,500)];
-	// console.log(t);
-	// console.log(handDrawn(t));
-	// ctx.doLine(handDrawn(t));
-	// ctx.strokeStyle = "#000";
-	// ctx.stroke();
-	// ctx.beginPath();
-	// ctx.doLine(removeCrossovers(handDrawn(findParallel(t, 20))));
-	// ctx.strokeStyle = "#0f0";
-	// ctx.stroke();
-	// ctx.beginPath();
-	// ctx.doLine(removeCrossovers(handDrawn(findParallel(t, -20))));
-	// ctx.strokeStyle = "#f00";
-	// ctx.stroke();
-
-	// crash();
-	*/
-
 
 	let ECCENTRICIY = 2;
 	let PARADISTS = [7, 14];
-	// let PARADISTS = [-7, -14, -21, -28, -35, -42, -49, -56, -63];
-	coastlines = coastlines.map(coastline => coastline.map(p => voi.nodes[p]));
 	// coastlines = coastlines.map(coastline => handDrawn(coastline, ECCENTRICIY));
-
-	coastlines = removeCrossovers(coastlines);
-
-	voi.coastlines = coastlines;
+	// coastlines = removeCrossovers(coastlines);
 
 	// Trace in a mountain range
 	growPatch('mountain', 'foothill');
@@ -785,20 +729,21 @@ function network(x, y, w, h) {
 
 		coastlines.forEach(coast => {
 			ctx.beginPath();
+			// ctx.lineWidth = 1;
 			ctx.doLine(coast);
 			ctx.strokeStyle = "#000";
 			ctx.stroke();
 
 			if (PARADISTS) {
-				let parallels = PARADISTS.map(d => findParallels_Clipper(coast, d));
+				let parallels = PARADISTS.map(d => findParallels_Clipper(coast, -d));
 				// parallels = parallels.map(p => handDrawn(p, ECCENTRICIY));
 				// parallels = removeCrossovers(parallels);
 
 				for (let parallel of parallels) {
 					ctx.beginPath();
-					parallel.forEach(p => ctx.doLine(p));
-					ctx.strokeStyle = "#44a";
-					ctx.lineWidth = 1;
+					parallel.forEach(p => ctx.doLine(p, coast.isLoop));
+					// ctx.strokeStyle = "#444";
+					ctx.lineWidth = 0.75;
 					ctx.stroke();
 				}
 			}
@@ -810,6 +755,7 @@ function network(x, y, w, h) {
 				ctx.textBaseline = 'middle';
 				let i = 0;
 				for (let p of coast) {
+					console.log('COAST', i, p.x, p.y);
 					ctx.fillText(i++, p.x, p.y);
 				}
 			}
