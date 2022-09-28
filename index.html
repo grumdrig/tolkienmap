@@ -45,7 +45,7 @@ var H = canvas.height = window.innerHeight;
 
 let COMPASS_R = 45;
 let SHOWALL = false;
-let COAST_ECCENTRICIY = 0;//4;
+let COAST_ECCENTRICIY = 4;
 
 
 // Draw the mountains
@@ -363,9 +363,7 @@ function lineIntersection(u, v, w, z) {
 	// https://stackoverflow.com/questions/20677795/how-do-i-compute-the-intersection-point-of-two-lines-in-python
 	// Convert to ax + by = c form
 	let [a1,b1,c1] = [u.y - v.y, v.x - u.x, v.x * u.y - u.x * v.y];
-	// console.log(u,v,a1,b1,c1);
 	let [a2,b2,c2] = [w.y - z.y, z.x - w.x, z.x * w.y - w.x * z.y];
-	// console.log(w,z,a2,b2,c2);
     let D  = a1 * b2 - b1 * a2;
     if (D === 0) {
     	return midpoint(v, w); // degenerate case; this is good enough
@@ -384,14 +382,12 @@ function findParallels(coastlines, spacings) {
 	for (let points of coastlines) {
 		subj[i++] = points.map(p => ({X: round(p.x), Y: round(p.y)}));
 	}
-	console.log(subj);
+	console.log('COAST', subj);
 
 	let scale = 100;
 	ClipperLib.JS.ScaleUpPaths(subj, scale);
 	let co = new ClipperLib.ClipperOffset(2, 0.25);
 	co.AddPaths(subj, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
-	// console.log(ClipperLib.Clipper.Orientation(subj));
-	// let sign = ClipperLib.Clipper.Orientation(subj) ? 1 : -1;
 	let result = spacings.map(spacing => {
 		let solution = new ClipperLib.Paths();
 		co.Execute(solution, spacing * scale /* * sign*/);
@@ -420,13 +416,10 @@ function removeCrossovers(chains) {
 			result.push(points[i]);
 			let nexti = i + 1;
 			for (let j = points.length - ((points.isLoop && i == 0) ? 3 : 2); j > i + 1 ; --j) {
-				// console.log(i,j);
 				let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
-				// console.log(i,j,intersection);
 				if (pointOnSegment(intersection, points[i], points[i+1]) &&
 					pointOnSegment(intersection, points[j], points[j+1])) {
 					// intersection is within segments
-					// console.log("on", points[i], points[i+1], points[j], points[j+1]);
 					result.push(intersection);
 					nexti = j + 1;
 					findLoop(points.slice(i, j+2));
@@ -440,7 +433,6 @@ function removeCrossovers(chains) {
 	}
 	function findLoop(points) {
 		let result = [];
-		// console.log("FIND", points);
 		for (let i = 0; i < points.length - 1; i++) {
 			for (let j = points.length - (i == 0 ? 3 : 2); j > i + 1 ; --j) {
 				let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
@@ -448,7 +440,6 @@ function removeCrossovers(chains) {
 					pointOnSegment(intersection, points[j], points[j+1])) {
 					// intersection is within segments
 					let loop = points.slice(i, j+2);
-					// console.log("LOOP", loop);
 					loop[0] = loop.last() = intersection;
 					loop.isLoop = true;
 					removeLoops(loop);
@@ -491,12 +482,11 @@ function network(x, y, w, h) {
 			p.terrain = 'compass';
 	});
 
-	// Noise function is here for future use depending on how map gen is going to work in the long run
-	// It isn't used now
 	let noise = Noise(20);
-	// noise.show(ctx);
 
-	// Designate ocean
+	// Designate ocean based on terrain heightmap but also keep a porttion of the west edge
+	// ocean
+
 	// Figure out where the threshold should be
 	let remaining = 0.25;  // target this proportion of map to be ocean
 	let threshold = 0;
@@ -508,7 +498,7 @@ function network(x, y, w, h) {
 			remaining -= noise.histogram[b];
 		}
 	}
-	voi.seeds.filter(s => !s.terrain && noise(s.x, s.y) < threshold)
+	voi.seeds.filter(s => !s.terrain && (s.x < W/15 || noise(s.x, s.y) < threshold))
 		.forEach(s => s.terrain = 'deeps');
 
 	// Edge of water is shallows
@@ -582,8 +572,10 @@ function network(x, y, w, h) {
 		if (coast.isLoop) {
 			coastline.isLoop = true;
 		} else if (coastline[0].y < 0 && coastline.last().y >= H) {
-			coastline.push({x: W + 100, y: H + 100});
-			coastline.push({x: W + 100, y:    -100});
+			coastline.push({x: coastline.last().x, y: H + 100});
+			coastline.push({x: W + 100,            y: H + 100});
+			coastline.push({x: W + 100,            y:    -100});
+			coastline.push({x: coastline[0].x,     y:    -100});
 		}
 
 		coastlines.push(coastline);
@@ -601,6 +593,8 @@ function network(x, y, w, h) {
 
 	voi.draw = (ctx) => {
 
+		// if (SHOWALL) noise.show(ctx);
+
 		// Coastlines
 		ctx.lineWidth = 1.25;
 		coastlines.forEach(coast => {
@@ -608,18 +602,6 @@ function network(x, y, w, h) {
 			ctx.doLine(coast);
 			ctx.strokeStyle = "#000";
 			ctx.stroke();
-
-			if (SHOWALL) {
-				ctx.fillStyle = `rgb(${irand(256)},${irand(256)},${irand(256)})`;
-				ctx.font = '12px sans serif';
-				ctx.textAlign = 'center';
-				ctx.textBaseline = 'middle';
-				let i = 0;
-				for (let p of coast) {
-					// console.log('COAST', i, p.x, p.y);
-					ctx.fillText(i++, p.x, p.y);
-				}
-			}
 		});
 
 		// Coastline parallels
@@ -716,6 +698,18 @@ function network(x, y, w, h) {
 			let S = 6;
 			ctx.fillRect(p.x-S/2, p.y-S/2, S, S);
 		});
+
+		if (SHOWALL) coastlines.forEach((coast, ci) => {
+			ctx.fillStyle = 'black';//`rgb(${irand(256)},${irand(256)},${irand(256)})`;
+			ctx.font = '10px sans-serif';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			let i = 0, letter = String.fromCharCode('A'.charCodeAt(0) + ci);
+			for (let p of coast) {
+				ctx.fillText(letter + i++, p.x, p.y);
+			}
+		});
+
 
 	};
 
