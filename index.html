@@ -376,25 +376,30 @@ function lineIntersection(u, v, w, z) {
 }
 
 
-function findParallels(points, spacing) {
-	let isLoop = dist2(points[0], points.last()) < 0.5;
-	points = points.map(p => ({X: round(p.x), Y: round(p.y)}));
-
+function findParallels(coastlines, spacings) {
 	let subj = new ClipperLib.Paths();
-	let solution = new ClipperLib.Paths();
-	subj[0] = points;
+
+	subj.length = coastlines.length;
+	let i = 0;
+	for (let points of coastlines) {
+		subj[i++] = points.map(p => ({X: round(p.x), Y: round(p.y)}));
+	}
+	console.log(subj);
 
 	let scale = 100;
 	ClipperLib.JS.ScaleUpPaths(subj, scale);
 	let co = new ClipperLib.ClipperOffset(2, 0.25);
 	co.AddPaths(subj, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
-	console.log(ClipperLib.Clipper.Orientation(subj));
+	// console.log(ClipperLib.Clipper.Orientation(subj));
 	// let sign = ClipperLib.Clipper.Orientation(subj) ? 1 : -1;
-	co.Execute(solution, spacing * scale /* * sign*/);
-	ClipperLib.JS.ScaleDownPaths(solution, scale);
+	let result = spacings.map(spacing => {
+		let solution = new ClipperLib.Paths();
+		co.Execute(solution, spacing * scale /* * sign*/);
+		ClipperLib.JS.ScaleDownPaths(solution, scale);
+		return solution.map(path => path.map(p => ({x:p.X, y:p.Y})));
+	});
 
-	solution = solution.map(path => path.map(p => ({x:p.X, y:p.Y})));
-	return solution;
+	return result;
 }
 
 function pointOnSegment(p, s, t) {
@@ -596,29 +601,13 @@ function network(x, y, w, h) {
 
 	voi.draw = (ctx) => {
 
+		// Coastlines
+		ctx.lineWidth = 1.25;
 		coastlines.forEach(coast => {
 			ctx.beginPath();
 			ctx.doLine(coast);
 			ctx.strokeStyle = "#000";
 			ctx.stroke();
-
-
-			if (PARADISTS) {
-				ctx.lineWidth = 0.75;
-				let parallels = PARADISTS.map(d => findParallels(coast, d));
-
-				if (COAST_ECCENTRICIY)
-					parallels = parallels.map(p => handDrawn(p, COAST_ECCENTRICIY));
-
-				// parallels = removeCrossovers(parallels);
-
-				for (let parallel of parallels) {
-					ctx.beginPath();
-					parallel.forEach(p => ctx.doLine(p, coast.isLoop));
-					ctx.stroke();
-				}
-				ctx.lineWidth = 1;
-			}
 
 			if (SHOWALL) {
 				ctx.fillStyle = `rgb(${irand(256)},${irand(256)},${irand(256)})`;
@@ -631,40 +620,23 @@ function network(x, y, w, h) {
 					ctx.fillText(i++, p.x, p.y);
 				}
 			}
-
-			/*
-			let shallows = [];
-			let coastEdges = [];
-			let cursor = coastline[0];
-			coastline.slice(1).forEach(p => {
-				let e = voi.nodes[p].edges.filter(e => (voi.edges[e].p1 == cursor && voi.edges[e].p2 == p) ||
-		               								   (voi.edges[e].p2 == cursor && voi.edges[e].p1 == p))[0];
-				// Need a way to decide which side is land and which is sea
-				let swapper = clockwise(voi.nodes[cursor], voi.nodes[p], voi.seeds[voi.edges[e].seeds[0]]) ? 0 : 1;
-				voi.seeds[voi.edges[e].seeds[0 ^ swapper]].terrain = 'shallows';
-				voi.seeds[voi.edges[e].seeds[1 ^ swapper]].terrain = 'beach';
-				shallows.push(voi.seeds[voi.edges[e].seeds[0 ^ swapper]]);
-				cursor = p;
-			});
-			*/
 		});
 
-		/*
-		// Fill the ocean
-		let oset = shallows;
-		let num = 0;
-		while (oset.length > 0) {
-			++ num;
-			let oo = oset.pop();
-			oo.neighbors.forEach(nn => {
-				let n = voi.seeds[nn];
-				if (!n.terrain) {
-					n.terrain = 'deeps';
-					oset.push(n);
-				}
-			});
+		// Coastline parallels
+		ctx.lineWidth = 0.6;
+		let parallels = findParallels(coastlines, PARADISTS);
+
+		if (COAST_ECCENTRICIY)
+			parallels = parallels.map(ps => ps.map(p => handDrawn(p, COAST_ECCENTRICIY / 2)));
+
+		// parallels = removeCrossovers(parallels);
+
+		for (let parallel of parallels) {
+			ctx.beginPath();
+			parallel.forEach(p => ctx.doLine(p, true));//, coast.isLoop));
+			ctx.stroke();
 		}
-		*/
+		ctx.lineWidth = 1;
 
 		ctx.strokeStyle = "#fee";
 		if (SHOWALL) voi.triangles.forEach(function (t) {
