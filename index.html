@@ -46,6 +46,7 @@ var H = canvas.height = window.innerHeight;
 let COMPASS_R = 45;
 let SHOWALL = false;
 let COAST_ECCENTRICIY = 4;
+let REVEAL_MARGINS = false;
 
 
 // Draw the mountains
@@ -571,15 +572,17 @@ function network(x, y, w, h) {
 
 		if (coast.isLoop) {
 			coastline.isLoop = true;
-		} else if (coastline[0].y < 0 && coastline.last().y >= H) {
-			coastline.push({x: coastline.last().x, y: H + 100});
-			coastline.push({x: W + 100,            y: H + 100});
-			coastline.push({x: W + 100,            y:    -100});
-			coastline.push({x: coastline[0].x,     y:    -100});
+		} else if (coastline[0].y < 0.05 * H && coastline.last().y >= 0.95 * H) {
+			coastline.push({x: coastline.last().x, y: H + 200});
+			coastline.push({x: W + 200,            y: H + 200});
+			coastline.push({x: W + 200,            y:    -200});
+			coastline.push({x: coastline[0].x,     y:    -200});
 		}
 
 		coastlines.push(coastline);
 	}
+
+	voi.coastlines = coastlines;
 
 	let PARADISTS = [7, 14];
 	// coastlines = removeCrossovers(coastlines);
@@ -699,8 +702,9 @@ function network(x, y, w, h) {
 			ctx.fillRect(p.x-S/2, p.y-S/2, S, S);
 		});
 
+		// Number the coastlines
 		if (SHOWALL) coastlines.forEach((coast, ci) => {
-			ctx.fillStyle = 'black';//`rgb(${irand(256)},${irand(256)},${irand(256)})`;
+			ctx.fillStyle = 'black';
 			ctx.font = '10px sans-serif';
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
@@ -730,7 +734,6 @@ function meander(p, n, d, a) {
 function drawMap(map) {
 	var ctx = canvas.getContext("2d");
 	ctx.save();
-	let REVEAL_MARGINS = false;
 	if (REVEAL_MARGINS) {
 		ctx.translate(100,100);
 		ctx.scale(0.8, 0.8);
