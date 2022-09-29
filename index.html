@@ -178,16 +178,33 @@ function handDrawn(points, eccentricity = 5) {
 	let c = points[0];
 	let result = points.isLoop ? [] : [c];
 	points.slice(1).forEach((p,i) => {
-		/*
-		let nsegments = 1 + floor(distance(c, p) / 50);
+		let nsegments = 1 + floor(distance(c, p) / 30);
+		if ((c.x < 0 && p.x < 0) ||
+		    (c.y < 0 && p.y < 0) ||
+		    (c.x >= W && p.x >= W) ||
+		    (c.y >= H && p.y >= H)) {
+			nsegments = 1;
+		}
 		let step = scale(subtract(p, c), 1/nsegments);
-		*/
 		var normal = normalize(vec(c.y-p.y, p.x-c.x));
-		/*
 		for (let i = 1; i < nsegments; ++i) {
 			result.push(add(add(c, scale(step, i)), scale(normal, crand(eccentricity))));
 		}
-		*/
+		result.push(p);//add(p, scale(normal, crand(eccentricity))));
+		c = p;
+	});
+	if (points.isLoop) {
+		result.unshift(result.last());
+		result.isLoop = true;
+	}
+	return result;
+}
+
+function sloppyLine(points, eccentricity = 5) {
+	let c = points[0];
+	let result = points.isLoop ? [] : [c];
+	points.slice(1).forEach((p,i) => {
+		let normal = normalize(vec(c.y-p.y, p.x-c.x));
 		result.push(add(p, scale(normal, crand(eccentricity))));
 		c = p;
 	});
@@ -612,7 +629,7 @@ function network(x, y, w, h) {
 		let parallels = findParallels(coastlines, PARADISTS);
 
 		if (COAST_ECCENTRICIY)
-			parallels = parallels.map(ps => ps.map(p => handDrawn(p, COAST_ECCENTRICIY / 2)));
+			parallels = parallels.map(ps => ps.map(p => sloppyLine(p, COAST_ECCENTRICIY / 2)));
 
 		// parallels = removeCrossovers(parallels);
 
