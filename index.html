@@ -175,6 +175,8 @@ function handDrawnArc(c, r, a0, a1, eccentricity) {
 }
 
 function handDrawn(points, eccentricity = 5) {
+	if (!eccentricity) return points;  // shortcut the trivial case
+
 	let c = points[0];
 	let result = points.isLoop ? [] : [c];
 	points.slice(1).forEach((p,i) => {
@@ -201,6 +203,8 @@ function handDrawn(points, eccentricity = 5) {
 }
 
 function sloppyLine(points, eccentricity = 5) {
+	if (!eccentricity) return points;  // shortcut the trivial case
+
 	let c = points[0];
 	let result = points.isLoop ? [] : [c];
 	points.slice(1).forEach((p,i) => {
@@ -400,7 +404,6 @@ function findParallels(coastlines, spacings) {
 	for (let points of coastlines) {
 		subj[i++] = points.map(p => ({X: round(p.x), Y: round(p.y)}));
 	}
-	console.log('COAST', subj);
 
 	let scale = 100;
 	ClipperLib.JS.ScaleUpPaths(subj, scale);
@@ -423,51 +426,6 @@ function pointOnSegment(p, s, t) {
 	       min(s.y, t.y) <= p.y && p.y <= max(s.y, t.y);
 }
 
-// TDDO: This is very slow sometimes
-// TODO: This fails if you start at a part that should be removed - instead the good stuff gets removed
-function removeCrossovers(chains) {
-	let results = [];  // multiple list of points
-	chains.forEach(removeLoops);
-	function removeLoops(points) {
-		let result = [];
-		for (let i = 0; i < points.length - 1;) {
-			result.push(points[i]);
-			let nexti = i + 1;
-			for (let j = points.length - ((points.isLoop && i == 0) ? 3 : 2); j > i + 1 ; --j) {
-				let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
-				if (pointOnSegment(intersection, points[i], points[i+1]) &&
-					pointOnSegment(intersection, points[j], points[j+1])) {
-					// intersection is within segments
-					result.push(intersection);
-					nexti = j + 1;
-					findLoop(points.slice(i, j+2));
-					break;
-				}
-			}
-			i = nexti;
-		}
-		result.push(points.last());
-		results.push(result);
-	}
-	function findLoop(points) {
-		let result = [];
-		for (let i = 0; i < points.length - 1; i++) {
-			for (let j = points.length - (i == 0 ? 3 : 2); j > i + 1 ; --j) {
-				let intersection = lineIntersection(points[i], points[i+1], points[j], points[j+1]);
-				if (pointOnSegment(intersection, points[i], points[i+1]) &&
-					pointOnSegment(intersection, points[j], points[j+1])) {
-					// intersection is within segments
-					let loop = points.slice(i, j+2);
-					loop[0] = loop.last() = intersection;
-					loop.isLoop = true;
-					removeLoops(loop);
-					return;
-				}
-			}
-		}
-	}
-	return results;
-}
 
 function network(x, y, w, h) {
 	var R = 20;
@@ -582,18 +540,22 @@ function network(x, y, w, h) {
 
 		let coastline = coast.map(p => voi.nodes[p]);
 
-		if (COAST_ECCENTRICIY)
-			coastline = handDrawn(coastline, COAST_ECCENTRICIY);
+		// Minimize how far afield the points go. This is a terrible hack around
+		// some drawing issues.
+		coastline = coastline.map(({x,y}) => ({x: max(-50, min(W + 50, x)),
+	   																		   y: max(-50, min(H + 50, y))}));
+
+		coastline = handDrawn(coastline, COAST_ECCENTRICIY);
 
 		coastline = smoothed(coastline, 0.5, 0.1);
 
 		if (coast.isLoop) {
 			coastline.isLoop = true;
 		} else if (coastline[0].y < 0.05 * H && coastline.last().y >= 0.95 * H) {
-			coastline.push({x: coastline.last().x, y: H + 200});
-			coastline.push({x: W + 200,            y: H + 200});
-			coastline.push({x: W + 200,            y:    -200});
-			coastline.push({x: coastline[0].x,     y:    -200});
+			coastline.push({x: coastline.last().x, y: H + 100});
+			coastline.push({x: W + 100,            y: H + 100});
+			coastline.push({x: W + 100,            y:    -100});
+			coastline.push({x: coastline[0].x,     y:    -100});
 		}
 
 		coastlines.push(coastline);
@@ -602,7 +564,6 @@ function network(x, y, w, h) {
 	voi.coastlines = coastlines;
 
 	let PARADISTS = [7, 14];
-	// coastlines = removeCrossovers(coastlines);
 
 	// Trace in a mountain range
 	growPatch('mountain', 'foothill');
@@ -628,10 +589,7 @@ function network(x, y, w, h) {
 		ctx.lineWidth = 0.6;
 		let parallels = findParallels(coastlines, PARADISTS);
 
-		if (COAST_ECCENTRICIY)
-			parallels = parallels.map(ps => ps.map(p => sloppyLine(p, COAST_ECCENTRICIY / 2)));
-
-		// parallels = removeCrossovers(parallels);
+		parallels = parallels.map(ps => ps.map(p => sloppyLine(p, COAST_ECCENTRICIY / 2)));
 
 		for (let parallel of parallels) {
 			ctx.beginPath();
@@ -904,6 +862,19 @@ let map = network(0, 0, W, H);
 
 
 canvas.addEventListener("click", e => { SHOWALL = !SHOWALL; drawMap(map) });
+window.addEventListener("keypress", ({key}) => {
+	if (key == 'n') {
+		map = network(0, 0, W, H);
+	 	drawMap(map);
+	} else if (key === 'r') {
+	 	drawMap(map);
+	} else if (key === 's') {
+		SHOWALL = !SHOWALL;
+		drawMap(map);
+	} else {
+		console.log('KEY', key);
+	}
+});
 window.addEventListener("load", e => drawMap(map));
 // drawMap();
 
