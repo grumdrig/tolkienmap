@@ -102,8 +102,12 @@ Voronwë`.toLowerCase().split('\n');
 
 let parser = /^([aäeëiíoóöuúy]+)?([bcdfghjklmnpqrstvwxz]+)?([aäeëiíoóöuúy]+)?([bcdfghjklmnpqrstvwxz]+)?([aäeëiíoóöuúy]+)?([bcdfghjklmnpqrstvwxz]+)?([aäeëiíoóöuúy]+)?([bcdfghjklmnpqrstvwxz]+)?([aäeëiíoóöuúy]+)?([bcdfghjklmnpqrstvwxz]+)?$/i;
 
-let vowels = {};
-let consonants = {};
+let frequencies = {
+	V: {}, v: {}, w: {},
+	C: {}, c: {}, k: {},
+};
+let vowels = [{},{},{}];
+let consonants = [{},{},{}];
 let patterns = {};
 
 for (let name of data) {
@@ -112,25 +116,27 @@ for (let name of data) {
 	let pattern = '';
 	for (let i = 1; i < m.length; ++i) {
 		if (m[i]) {
-			let set = i & 1 ? vowels : consonants;
-			pattern += i & 1 ? 'V' : 'C';
-			set[m[i]] = (set[m[i]] || 0) + 1;
+			let index = (i == 1 || !m[i-1]) ? 0 : m[i+1] ? 1 : 2;
+			let set = (i & 1 ? 'Vvw' : 'Cck')[index];
+			frequencies[set][m[i]] = (frequencies[set][m[i]] || 0) + 1;
+			pattern += set;
 		}
 	}
 	patterns[pattern] = (patterns[pattern] || 0) + 1;
 }
 
 function burnin(name, set) {
-	console.log(`\tconst ${name} = [`);
+	console.log(`\t${name} = [`);
 	let total = 0;
 	for (let v in set) total += set[v];
 	for (let v in set) {
 		console.log(`\t\t[${(set[v] / total).toFixed(5)}, '${v}'],`);
 	}
-	console.log("];");
+	console.log("\t\t];");
 }
 
-burnin('vowels', vowels);
-burnin('consonants', consonants);
-burnin('patterns', patterns);
+console.log('\tconst frequencies = {};');
+for (let set in frequencies)
+	burnin(`frequencies.${set}`, frequencies[set]);
+burnin('const patterns', patterns);
 
