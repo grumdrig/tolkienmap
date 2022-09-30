@@ -5,14 +5,23 @@
 <title>Map of Central Planet</title>
 <script src="clipper.js"></script>
 <style>
+@font-face {
+	font-family: Middleearth;
+	src: url('middleearth.ttf');
+}
 html, body {
 	margin: 0;
 	overflow: hidden;
+}
+h1 {
+	font-family: Middleearth;
+	float: left;
 }
 </style>
 <script src="triangulate.js"></script>
 </head>
 <body>
+	<h1>Central Planet</h1>
 <canvas id="map"></canvas>
 <script>
 "use strict";
@@ -432,13 +441,18 @@ function network(x, y, w, h) {
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	var voi = new Triangulation(pts);
+	let labels = [];
 
 	function growPatch(core, edges) {
 		let available = voi.seeds.filter(s => !s.terrain);
 		if (available.length === 0) return;
 		var active = [pick(available).index];
+		let patch = new Set();  // keep track of what became the terrain
 		for (var i = 0; i < 30; ++i) {
-			active.map(a => voi.seeds[a].terrain = core);
+			active.map(a => {
+				voi.seeds[a].terrain = core;
+				patch.add(a);
+			});
 			var ns = active.reduce((p, c) => p.concat(voi.seeds[c].neighbors), []);
 			ns = Array.from(new Set(ns)).filter(n => !voi.seeds[n].terrain);
 			if (ns.length == 0) break;
@@ -448,8 +462,31 @@ function network(x, y, w, h) {
 				if (eligible.length == 0) break;
 				active.push(pick(eligible));
 			}
-			ns.forEach(n => voi.seeds[n].terrain = edges);
+			ns.forEach(n => {
+				voi.seeds[n].terrain = edges;
+				patch.add(n);
+			});
 		}
+		patch = Array.from(patch).map(n => voi.seeds[n])
+		let mean = patch.reduce((sum,p) => ({ x: sum.x + p.x, y: sum.y + p.y }), {x:0, y:0});
+		mean.x /= patch.length;
+		mean.y /= patch.length;
+		let slope = patch.map(({x,y}) => (x - mean.x) * (y - mean.y)).reduce((a,b) => a+b) /
+								patch.map(({x,y}) => (x - mean.x) * (x - mean.x)).reduce((a,b) => a+b);
+		let name = elfName().toUpperCase();
+		if (core === 'forest') {
+			name = name + 'WOOD';
+		} else if (core === 'mountain') {
+			name = 'ERED ' + name;
+		} else {
+			name = name + ' ' + core;
+		}
+		labels.push({
+			name,
+			x: mean.x,
+			y: mean.y,
+			slope });
+		return patch;
 	}
 
 	// Reserve room for the compass rose
@@ -619,11 +656,6 @@ function network(x, y, w, h) {
 		});
 		ctx.strokeStyle = "#000";
 
-		// ctx.fillStyle = "#00f";
-		// if (SHOWALL) voi.nodes.forEach(function (p) {
-		// 	ctx.fillRect(p.x, p.y, 2, 2);
-		// });
-
 		let features = [];
 		let DENSE_FOREST = true;
 		let TREE_SIZE = DENSE_FOREST ? 8 : 10;
@@ -689,6 +721,21 @@ function network(x, y, w, h) {
 			}
 		});
 
+
+		ctx.fillStyle = 'red';
+		ctx.strokeStyle = 'white';
+		ctx.font = '20px Middleearth';
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		for (let label of labels) {
+			ctx.save();
+			ctx.translate(label.x, label.y);
+			ctx.rotate(Math.atan2(label.slope, 1));
+			ctx.lineWidth = 8;
+			ctx.strokeText(label.name, 0, 0);
+			ctx.fillText(label.name, 0, 0);
+			ctx.restore();
+		}
 
 	};
 
@@ -877,6 +924,128 @@ window.addEventListener("keypress", ({key}) => {
 });
 window.addEventListener("load", e => drawMap(map));
 // drawMap();
+
+function elfName() {
+	const vowels = [
+		[0.02033, 'ae'],
+		[0.19512, 'o'],
+		[0.19106, 'a'],
+		[0.00813, 'ië'],
+		[0.01220, 'í'],
+		[0.00407, 'ai'],
+		[0.03252, 'ë'],
+		[0.19106, 'e'],
+		[0.20732, 'i'],
+		[0.00407, 'ía'],
+		[0.02439, 'u'],
+		[0.01220, 'ui'],
+		[0.00407, 'eä'],
+		[0.02033, 'io'],
+		[0.01220, 'ó'],
+		[0.00813, 'yë'],
+		[0.00407, 'eö'],
+		[0.00407, 'ëa'],
+		[0.02033, 'ie'],
+		[0.01626, 'ú'],
+		[0.00407, 'ue'],
+		[0.00407, 'uo'],
+	];
+
+	const consonants = [
+		[0.00342, 'gn'],
+		[0.12329, 'r'],
+		[0.04795, 'm'],
+		[0.00342, 'md'],
+		[0.01370, 'mr'],
+		[0.03767, 's'],
+		[0.03082, 'd'],
+		[0.02397, 'th'],
+		[0.13014, 'n'],
+		[0.00342, 'ngr'],
+		[0.01027, 'dh'],
+		[0.15068, 'l'],
+		[0.00685, 'rg'],
+		[0.00685, 'b'],
+		[0.05137, 'g'],
+		[0.02397, 'c'],
+		[0.00342, 'nth'],
+		[0.00342, 'rn'],
+		[0.00685, 'br'],
+		[0.00342, 'mb'],
+		[0.00342, 'rm'],
+		[0.00685, 'rd'],
+		[0.03425, 'f'],
+		[0.00342, 'rw'],
+		[0.00342, 'cth'],
+		[0.01370, 'dr'],
+		[0.00685, 'h'],
+		[0.00685, 'lm'],
+		[0.01370, 'ld'],
+		[0.03425, 't'],
+		[0.00342, 'mm'],
+		[0.00342, 'k'],
+		[0.01027, 'nw'],
+		[0.01712, 'ng'],
+		[0.00342, 'lr'],
+		[0.03425, 'nd'],
+		[0.00342, 'rdh'],
+		[0.00342, 'st'],
+		[0.00685, 'rf'],
+		[0.00342, 'lf'],
+		[0.00342, 'nr'],
+		[0.00342, 'ngl'],
+		[0.00685, 'lg'],
+		[0.00342, 'ml'],
+		[0.01027, 'gl'],
+		[0.00342, 'gw'],
+		[0.00685, 'ngw'],
+		[0.00685, 'v'],
+		[0.00342, 'bl'],
+		[0.00342, 'dhr'],
+		[0.00342, 'ht'],
+		[0.00685, 'thr'],
+		[0.00685, 'll'],
+		[0.00342, 'lw'],
+		[0.00685, 'ph'],
+		[0.00685, 'p'],
+		[0.00342, 'nl'],
+		[0.00342, 'q'],
+		[0.00342, 'nn'],
+		[0.00342, 'nt'],
+	];
+	const patterns = [
+		[0.13861, 'VCVC'],
+		[0.05941, 'VCVCV'],
+		[0.09901, 'VCVCVC'],
+		[0.32673, 'CVCVC'],
+		[0.21782, 'CVCVCVC'],
+		[0.00990, 'CVCVCVCVC'],
+		[0.01980, 'VCVCVCV'],
+		[0.00990, 'VCVCVCVC'],
+		[0.03960, 'VCV'],
+		[0.00990, 'VC'],
+		[0.03960, 'CVCV'],
+		[0.01980, 'CVC'],
+		[0.00990, 'CVCVCV'],
+	];
+
+	function pickp(a) {
+		let r = rand();
+		for (let [frequency, value] of a) {
+			r -= frequency;
+			if (r <= 0) return value;
+		}
+		return '';  // shouldn't happen, but
+	}
+
+	let result = '';
+	let pat = pickp(patterns);
+	for (let p of pat) {
+		result += pickp(p === 'V' ? vowels : consonants);
+	}
+	return result[0].toUpperCase() + result.slice(1);
+}
+
 
 </script>
 </body>
