@@ -1,3 +1,7 @@
+// Ad hoc tool to use a list of Tolkien elf names I found somewhere to
+// generate a name generator. It could be generalized and improved, I feel
+// certain.
+
 let data = `Aegnor
 Amarië
 Amdír
