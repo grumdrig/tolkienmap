@@ -620,14 +620,6 @@ function network(x, y, w, h) {
 			}
 			if (voi.river.length < 10) voi.river = [];
 
-			// Mark riverbanks
-			for (let s of voi.seeds.filter(s => !s.terrain)) {
-				let es = Object.keys(s.edges).map(e => voi.edges[e]);
-				es = es.filter(e => voi.river.includes(e.p1) && voi.river.includes(e.p2));
-				if (es.length > 0) s.terrain = 'bank';
-				console.log('bank', s);
-			}
-
 			// Turn it into a loop, arount the outside of the visible map, for the sake
 			// of polygon operations
 			coastline.push({x: coastline.last().x, y: H + 100});
@@ -640,6 +632,14 @@ function network(x, y, w, h) {
 	}
 
 	voi.coastlines = coastlines;
+
+	// Mark riverbanks
+	for (let s of voi.seeds.filter(s => !s.terrain)) {
+		let es = Object.keys(s.edges).map(e => voi.edges[e]);
+		es = es.filter(e => voi.river.includes(e.p1) && voi.river.includes(e.p2));
+		if (es.length > 0) s.terrain = 'bank';
+		console.log('bank', s);
+	}
 
 	let PARADISTS = [7, 14];
 
@@ -677,9 +677,13 @@ function network(x, y, w, h) {
 		ctx.lineWidth = 1;
 
 		// River
+		// Ease river
+		let river = voi.river.map(r => voi.nodes[r]);
+		river = smoothed(river, 0.5, 0.03);
+		river = handDrawn(river, COAST_ECCENTRICIY);
 		ctx.lineWidth = 2;
 		ctx.beginPath();
-		ctx.doLine(voi.river.map(i => voi.nodes[i]));
+		ctx.doLine(river);
 		ctx.stroke();
 
 		ctx.strokeStyle = "#fee";
