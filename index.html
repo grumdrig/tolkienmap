@@ -520,14 +520,15 @@ function network(x, y, w, h) {
 	voi.seeds.filter(s => s.terrain === 'deeps')
 		.filter(s => s.neighbors.map(n => voi.seeds[n]).filter(n => n.terrain !== 'deeps').length > 0)
 		.forEach(s => s.terrain = 'shallows');
+
 	// Edge of land is beach
 	let coastedges = new Set();
 	voi.seeds.filter(s => s.terrain === 'shallows').forEach(s => {
 		for (let ne in s.edges) {
 			let e = voi.edges[ne], p1 = voi.nodes[e.p1], p2 = voi.nodes[e.p2];
 			if (min(p1.x, p2.x) >= W || max(p1.x, p2.x) < 0 ||
-				min(p1.y, p2.y) >= H || max(p1.y, p2.y) < 0) {
-				// Edge is entirely off the map
+				  min(p1.y, p2.y) >= H || max(p1.y, p2.y) < 0) {
+				// Edge is entirely off the map. Drop it.
 				continue;
 			}
 			let ni = s.edges[ne];
@@ -591,6 +592,37 @@ function network(x, y, w, h) {
 		if (coast.isLoop) {
 			coastline.isLoop = true;
 		} else if (coastline[0].y < 0.05 * H && coastline.last().y >= 0.95 * H) {
+			// There should always be one of these, that runs from the top to the bottom
+
+			// Start the big river about 1/3 up from the bottom
+			for (let mouth_i = round(2 * coast.length / 3); mouth_i < coast.length; mouth_i += 1) {
+				let mouth = coast[mouth_i];
+				let river = voi.river = [mouth];
+				function isLandEdge(edge_index) {
+					let terrains = voi.edges[edge_index].seeds.map(si => voi.seeds[si].terrain);
+					return terrains.filter(t => t && t !== 'beach').length === 0;
+				}
+				while (river.length < 30) {
+					let ef = voi.edges_from_node(river.last())
+					ef = ef.map(edge => ({edge, far: voi.far_node(edge, river.last())}))
+					ef = ef.filter(({edge, far}) => !river.includes(far))
+					ef = ef.filter(({edge, far}) => isLandEdge(edge))
+					ef = ef.map(({edge, far}) => far);
+					let next = pick(ef);
+					// let next = pick(voi.edges_from_node(river.last())
+					// 							.map(edge => ({edge, far: voi.far_node(edge, river.last())}))
+					// 							.filter(({edge, far}) => !river.includes(far))
+					// 							.filter(({edge, far}) => isLandEdge(edge))
+					// 							.map(({edge, far}) => far));
+					if (typeof next === 'undefined') break;
+					river.push(next);
+				}
+				// Should only take 1 or 2 tries
+				if (river.length > 1) break;
+			}
+
+			// Turn it into a loop, arount the outside of the visible map, for the sake
+			// of polygon operations
 			coastline.push({x: coastline.last().x, y: H + 100});
 			coastline.push({x: W + 100,            y: H + 100});
 			coastline.push({x: W + 100,            y:    -100});
@@ -636,6 +668,12 @@ function network(x, y, w, h) {
 			ctx.stroke();
 		}
 		ctx.lineWidth = 1;
+
+		// River
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.doLine(voi.river.map(i => voi.nodes[i]));
+		ctx.stroke();
 
 		ctx.strokeStyle = "#fee";
 		if (SHOWALL) voi.triangles.forEach(function (t) {
@@ -712,6 +750,7 @@ function network(x, y, w, h) {
 		});
 
 		// Number the coastlines
+		/*
 		if (SHOWALL) coastlines.forEach((coast, ci) => {
 			ctx.fillStyle = 'black';
 			ctx.font = '10px sans-serif';
@@ -722,6 +761,7 @@ function network(x, y, w, h) {
 				ctx.fillText(letter + i++, p.x, p.y);
 			}
 		});
+		*/
 
 		if (SHOW_LABELS) {
 			ctx.fillStyle = 'red';

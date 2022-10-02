@@ -42,9 +42,20 @@ function scalarCross(u, v) { return u.x * v.y - u.y * v.x; }  // sine of angle b
 //              neighbors[index]=>edge   indices of neighbor seeds to edge dividing them
 //              edges[index]=>seed       indices of edges to neighbor seed
 //   triangles: [{p1,p2,p3: indices into seeds}]   delauny triangulation
-//   nodes:     [{x,y: position; edges:[3 indices into edges]}]                  corners in voronoi graph
-//   edges:     [{p1,p2: indices into nodes}]      edges in voronoi graph
+//   nodes:     [{x,y: position; edges:[3 indices into edges]}]    corners in voronoi graph
+//   edges:     [{p1,p2: indices into nodes, seeds:[s1,s2]}]      edges in voronoi graph
 class Triangulation {
+
+
+   edges_from_node(node_index) {
+      return this.nodes[node_index].edges;
+   }
+
+   far_node(edge_index, near_index) {
+      let {p1,p2} = this.edges[edge_index];
+      return p1 == near_index ? p2 : p1;
+   }
+
 
    constructor (seeds) {
       seeds.sort(function (p1,p2) { return p1.x - p2.x });
