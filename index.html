@@ -192,7 +192,7 @@ function handDrawn(points, eccentricity = 5) {
 	let c = points[0];
 	let result = points.isLoop ? [] : [c];
 	points.slice(1).forEach((p,i) => {
-		let nsegments = 1 + floor(distance(c, p) / 30);
+		let nsegments = 1 + floor(distance(c, p) / 10);
 		if ((c.x < 0 && p.x < 0) ||
 		    (c.y < 0 && p.y < 0) ||
 		    (c.x >= W && p.x >= W) ||
@@ -679,8 +679,8 @@ function network(x, y, w, h) {
 		// River
 		// Ease river
 		let river = voi.river.map(r => voi.nodes[r]);
-		river = smoothed(river, 0.5, 0.03);
-		river = handDrawn(river, COAST_ECCENTRICIY);
+		river = smoothed(river, 0.5, 0);
+		river = handDrawn(river, 2);
 		ctx.lineWidth = 2;
 		ctx.beginPath();
 		ctx.doLine(river);
