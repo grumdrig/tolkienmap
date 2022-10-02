@@ -605,9 +605,9 @@ function network(x, y, w, h) {
 				}
 				while (river.length < 100) {
 					let ef = voi.edges_from_node(river.last())
-					ef = ef.map(edge => ({edge, far: voi.far_node(edge, river.last())}))
-					ef = ef.filter(({edge, far}) => !river.includes(far))
-					ef = ef.filter(({edge, far}) => isLandEdge(edge))
+					ef = ef.map(edge => ({edge, far: voi.far_node(edge, river.last())}));
+					ef = ef.filter(({edge, far}) => !river.includes(far));
+					ef = ef.filter(({edge, far}) => isLandEdge(edge));
 					if (ef.length === 0) break;
 					ef = ef.map(({edge, far}) => far);
 					ef = ef.sort((a,b) => noise(voi.nodes[a]) - noise(voi.nodes[b]));
@@ -619,6 +619,14 @@ function network(x, y, w, h) {
 				if (river.length > 20) break;
 			}
 			if (voi.river.length < 10) voi.river = [];
+
+			// Mark riverbanks
+			for (let s of voi.seeds.filter(s => !s.terrain)) {
+				let es = Object.keys(s.edges).map(e => voi.edges[e]);
+				es = es.filter(e => voi.river.includes(e.p1) && voi.river.includes(e.p2));
+				if (es.length > 0) s.terrain = 'bank';
+				console.log('bank', s);
+			}
 
 			// Turn it into a loop, arount the outside of the visible map, for the sake
 			// of polygon operations
