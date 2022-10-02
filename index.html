@@ -598,22 +598,26 @@ function network(x, y, w, h) {
 			// Start the big river about 1/3 up from the bottom
 			for (let mouth_i = round(2 * coast.length / 3); mouth_i < coast.length; mouth_i += 1) {
 				let mouth = coast[mouth_i];
+				let banks = {};
 				let river = voi.river = [mouth];
-				function isLandEdge(edge_index) {
-					let terrains = voi.edges[edge_index].seeds.map(si => voi.seeds[si].terrain);
-					return terrains.filter(t => t && t !== 'beach').length === 0;
+				function isInteriorEdge(edge_index) {
+					for (let si of voi.edges[edge_index].seeds) {
+						if (banks[si] === 2) return false;
+						let t = voi.seeds[si].terrain;
+						if (t && t !== 'beach') return false;
+					}
+					return true;
 				}
 				while (river.length < 100) {
 					let ef = voi.edges_from_node(river.last())
 					ef = ef.map(edge => ({edge, far: voi.far_node(edge, river.last())}));
 					ef = ef.filter(({edge, far}) => !river.includes(far));
-					ef = ef.filter(({edge, far}) => isLandEdge(edge));
+					ef = ef.filter(({edge, far}) => isInteriorEdge(edge));
 					if (ef.length === 0) break;
-					ef = ef.map(({edge, far}) => far);
-					ef = ef.sort((a,b) => noise(voi.nodes[a]) - noise(voi.nodes[b]));
-					console.log(ef.map(n => noise(voi.nodes[n])));
+					ef = ef.sort((a,b) => noise(voi.nodes[a.far]) - noise(voi.nodes[b.far]));
 					let next = ef.last();
-					river.push(next);
+					for (let bank of voi.edges[next.edge].seeds) banks[bank] = (banks[bank] || 0) + 1;
+					river.push(next.far);
 				}
 				// Should only take 1 or 2 tries
 				if (river.length > 20) break;
