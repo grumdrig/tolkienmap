@@ -31,11 +31,11 @@ Element.prototype.$ = Element.prototype.querySelector;
 Element.prototype.$$ = Element.prototype.querySelectorAll;
 
 const PI = Math.PI, pow = Math.pow, cos = Math.cos, sin = Math.sin,
-   		ceil = Math.ceil, floor = Math.floor, min = Math.min, max = Math.max,
-   		round = Math.round, rand = Math.random;
+			ceil = Math.ceil, floor = Math.floor, min = Math.min, max = Math.max,
+			round = Math.round, rand = Math.random;
 
 Array.prototype.last = function () {
-    return this[this.length - 1];
+		return this[this.length - 1];
 };
 
 function crand(scale) { return (rand() - 0.5) * scale }
@@ -66,7 +66,7 @@ CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakines
 	var ctx = this;
 	var peaks = [];
 	for (var j = H; j > 0; j -= DH) {
-	    for (var i = W; i > 0; i -= DW) {
+			for (var i = W; i > 0; i -= DW) {
 			peaks.push({x: i - rand() * DW, y: j - rand() * DH});
 		}
 	}
@@ -128,13 +128,13 @@ CanvasRenderingContext2D.prototype.crosshatchRect = function (x, y, w, h) {
 
 CanvasRenderingContext2D.prototype.mountainRange = function (DW, DH) {
 	var x = this.canvas.width / 2;
-    let N = 50;
-    for (var i = 0; i < N; ++i) {
-      x = x + crand(100);
-      let y = (this.canvas.height - 64) * i / N + 16 * rand();
-      this.mountain({x:x, y:y}, DW * 2, DH, true);
-    }
-  }
+		let N = 50;
+		for (var i = 0; i < N; ++i) {
+			x = x + crand(100);
+			let y = (this.canvas.height - 64) * i / N + 16 * rand();
+			this.mountain({x:x, y:y}, DW * 2, DH, true);
+		}
+	}
 
 
 // This just shows a single mountain in the middle of the page
@@ -194,9 +194,9 @@ function handDrawn(points, eccentricity = 5) {
 	points.slice(1).forEach((p,i) => {
 		let nsegments = 1 + floor(distance(c, p) / 10);
 		if ((c.x < 0 && p.x < 0) ||
-		    (c.y < 0 && p.y < 0) ||
-		    (c.x >= W && p.x >= W) ||
-		    (c.y >= H && p.y >= H)) {
+				(c.y < 0 && p.y < 0) ||
+				(c.x >= W && p.x >= W) ||
+				(c.y >= H && p.y >= H)) {
 			nsegments = 1;
 		}
 		let step = scale(subtract(p, c), 1/nsegments);
@@ -388,7 +388,7 @@ function dump(label, arr) {
 Array.prototype.has = function (e) { return this.indexOf(e) >= 0 };
 
 function clockwise(A,B,C) {
-  return (C.y-A.y) * (B.x-A.x) < (B.y-A.y) * (C.x-A.x);
+	return (C.y-A.y) * (B.x-A.x) < (B.y-A.y) * (C.x-A.x);
 }
 
 function lineIntersection(u, v, w, z) {
@@ -398,12 +398,12 @@ function lineIntersection(u, v, w, z) {
 	// Convert to ax + by = c form
 	let [a1,b1,c1] = [u.y - v.y, v.x - u.x, v.x * u.y - u.x * v.y];
 	let [a2,b2,c2] = [w.y - z.y, z.x - w.x, z.x * w.y - w.x * z.y];
-    let D  = a1 * b2 - b1 * a2;
-    if (D === 0) {
-    	return midpoint(v, w); // degenerate case; this is good enough
-    } else {
-	    return vec((c1 * b2 - b1 * c2) / D,
-				   (a1 * c2 - c1 * a2) / D);
+		let D  = a1 * b2 - b1 * a2;
+		if (D === 0) {
+			return midpoint(v, w); // degenerate case; this is good enough
+		} else {
+			return vec((c1 * b2 - b1 * c2) / D,
+					 (a1 * c2 - c1 * a2) / D);
 	}
 }
 
@@ -435,7 +435,7 @@ function pointOnSegment(p, s, t) {
 	// This is assuming p in on the line through those points. Check is
 	// redundant for cases of verticals and horizontals.
 	return min(s.x, t.x) <= p.x && p.x <= max(s.x, t.x) &&
-	       min(s.y, t.y) <= p.y && p.y <= max(s.y, t.y);
+				 min(s.y, t.y) <= p.y && p.y <= max(s.y, t.y);
 }
 
 
@@ -528,7 +528,7 @@ function network(x, y, w, h) {
 		for (let ne in s.edges) {
 			let e = voi.edges[ne], p1 = voi.nodes[e.p1], p2 = voi.nodes[e.p2];
 			if (min(p1.x, p2.x) >= W || max(p1.x, p2.x) < 0 ||
-				  min(p1.y, p2.y) >= H || max(p1.y, p2.y) < 0) {
+					min(p1.y, p2.y) >= H || max(p1.y, p2.y) < 0) {
 				// Edge is entirely off the map. Drop it.
 				continue;
 			}
@@ -584,7 +584,7 @@ function network(x, y, w, h) {
 		// Minimize how far afield the points go. This is a terrible hack around
 		// some drawing issues.
 		coastline = coastline.map(({x,y}) => ({x: max(-50, min(W + 50, x)),
-	   																		   y: max(-50, min(H + 50, y))}));
+																					 y: max(-50, min(H + 50, y))}));
 
 		coastline = handDrawn(coastline, COAST_ECCENTRICIY);
 
@@ -595,34 +595,7 @@ function network(x, y, w, h) {
 		} else if (coastline[0].y < 0.05 * H && coastline.last().y >= 0.95 * H) {
 			// There should always be one of these, that runs from the top to the bottom
 
-			// Start the big river about 1/3 up from the bottom
-			for (let mouth_i = round(2 * coast.length / 3); mouth_i < coast.length; mouth_i += 1) {
-				let mouth = coast[mouth_i];
-				let banks = {};
-				let river = voi.river = [mouth];
-				function isInteriorEdge(edge_index) {
-					for (let si of voi.edges[edge_index].seeds) {
-						if (banks[si] === 2) return false;
-						let t = voi.seeds[si].terrain;
-						if (t && t !== 'beach') return false;
-					}
-					return true;
-				}
-				while (river.length < 100) {
-					let ef = voi.edges_from_node(river.last())
-					ef = ef.map(edge => ({edge, far: voi.far_node(edge, river.last())}));
-					ef = ef.filter(({edge, far}) => !river.includes(far));
-					ef = ef.filter(({edge, far}) => isInteriorEdge(edge));
-					if (ef.length === 0) break;
-					ef = ef.sort((a,b) => noise(voi.nodes[a.far]) - noise(voi.nodes[b.far]));
-					let next = ef.last();
-					for (let bank of voi.edges[next.edge].seeds) banks[bank] = (banks[bank] || 0) + 1;
-					river.push(next.far);
-				}
-				// Should only take 1 or 2 tries
-				if (river.length > 20) break;
-			}
-			if (voi.river.length < 10) voi.river = [];
+			createRiver(coast);
 
 			// Turn it into a loop, arount the outside of the visible map, for the sake
 			// of polygon operations
@@ -636,6 +609,39 @@ function network(x, y, w, h) {
 	}
 
 	voi.coastlines = coastlines;
+
+	function createRiver(coast) {
+		// Start the big river about 1/3 up from the bottom
+		for (let mouth_i = round(2 * coast.length / 3); mouth_i < coast.length; mouth_i += 1) {
+			let mouth = coast[mouth_i];
+			let banks = {};
+			let river = voi.river = [mouth];
+			function isInteriorEdge(edge_index) {
+				for (let si of voi.edges[edge_index].seeds) {
+					if (banks[si] === 2) return false;
+					let t = voi.seeds[si].terrain;
+					if (t && t !== 'beach') return false;
+				}
+				return true;
+			}
+			while (river.length < 100) {
+				let ef = voi.edges_from_node(river.last())
+				ef = ef.map(edge => ({edge, far: voi.far_node(edge, river.last())}));
+				ef = ef.filter(({edge, far}) => !river.includes(far));
+				ef = ef.filter(({edge, far}) => isInteriorEdge(edge));
+				if (ef.length === 0) break;
+				ef = ef.sort((a,b) => noise(voi.nodes[a.far]) - noise(voi.nodes[b.far]));
+				let next = ef.last();
+				for (let bank of voi.edges[next.edge].seeds) {
+					banks[bank] = (banks[bank] || 0) + 1;
+				}
+				river.push(next.far);
+			}
+			// Should only take a couple tries
+			if (river.length > 20) break;
+		}
+		if (voi.river.length < 10) voi.river = [];
+	}
 
 	// Mark riverbanks
 	for (let s of voi.seeds.filter(s => !s.terrain)) {
@@ -889,50 +895,50 @@ function Noise(scale) {
 
 	function bishopavg(x, y, d) {
 	return (pt(x-d,y-d) + pt(x+d,y-d) +
-	        pt(x-d,y+d) + pt(x+d,y+d)) / 4;
+					pt(x-d,y+d) + pt(x+d,y+d)) / 4;
 	}
 
 	function rookavg(x, y, d) {
 	return (      pt(x,y-d) +
-	        pt(x-d,y) + pt(x+d,y) +
-	              pt(x,y+d)) / 4;
+					pt(x-d,y) + pt(x+d,y) +
+								pt(x,y+d)) / 4;
 	}
 
 	var persistence = 1/2;
 	var SQRT2 = sqrt(2);
 
 	// Find largest power of 2 smaller than either dimension
-  var n = 1;
-  while (2*n < scaledW && 2*n < scaledH) n *= 2;
+	var n = 1;
+	while (2*n < scaledW && 2*n < scaledH) n *= 2;
 
-  // Fill in initial values along top and left edges
-  for (var y = 0; y < scaledH; ++y) pt(0, y, 0);
-  for (var x = 0; x < scaledW; ++x) pt(x, 0, pt(x, -1));
+	// Fill in initial values along top and left edges
+	for (var y = 0; y < scaledH; ++y) pt(0, y, 0);
+	for (var x = 0; x < scaledW; ++x) pt(x, 0, pt(x, -1));
 
-  // At each scale level, apply diamond-square algorithm to
-  // midpoints between existing values
-  var sigma = pt(n, 0);
-  while (n > 0) {
-    for (var y = n; y < scaledH; y += 2*n) {
-      for (var x = n; x < scaledW; x += 2*n) {
-        pt(x, y, crand(2 * sigma) * SQRT2 + bishopavg(x,y,n));
-      }
-    }
+	// At each scale level, apply diamond-square algorithm to
+	// midpoints between existing values
+	var sigma = pt(n, 0);
+	while (n > 0) {
+		for (var y = n; y < scaledH; y += 2*n) {
+			for (var x = n; x < scaledW; x += 2*n) {
+				pt(x, y, crand(2 * sigma) * SQRT2 + bishopavg(x,y,n));
+			}
+		}
 
-    for (var y = 0; y < scaledH; y += 2*n) {
-      for (var x = n; x < scaledW; x += 2*n) {
-        pt(x, y, crand(2 * sigma) + rookavg(x,y,n));
-      }
-    }
+		for (var y = 0; y < scaledH; y += 2*n) {
+			for (var x = n; x < scaledW; x += 2*n) {
+				pt(x, y, crand(2 * sigma) + rookavg(x,y,n));
+			}
+		}
 
-    for (var y = n; y < scaledH; y += 2*n) {
-      for (var x = 0; x < scaledW; x += 2*n) {
-        pt(x, y, crand(2 * sigma) + rookavg(x,y,n));
-      }
-    }
+		for (var y = n; y < scaledH; y += 2*n) {
+			for (var x = 0; x < scaledW; x += 2*n) {
+				pt(x, y, crand(2 * sigma) + rookavg(x,y,n));
+			}
+		}
 
-    n >>= 1;
-    sigma *= persistence;
+		n >>= 1;
+		sigma *= persistence;
 	}
 
 	// Rescale to [0, 1]
@@ -947,13 +953,13 @@ function Noise(scale) {
 	// Draw what we've generated
 	function rgb(r,g,b) { return "rgb(" + (r * 255 >> 0) + "," + (g * 255 >> 0) + "," + (b * 255 >> 0) + ")" }
 	result.show = function (ctx) {
-  	for (var y = 0; y < scaledH; ++y) {
-  		for (var x = 0; x < scaledW; ++x) {
-  			let v = pt(x,y);
-  			ctx.fillStyle = rgb(v,v,v);
-  			ctx.fillRect(x * scale, y * scale, scale, scale);
-  		}
-  	}
+		for (var y = 0; y < scaledH; ++y) {
+			for (var x = 0; x < scaledW; ++x) {
+				let v = pt(x,y);
+				ctx.fillStyle = rgb(v,v,v);
+				ctx.fillRect(x * scale, y * scale, scale, scale);
+			}
+		}
 	};
 
 	result.histogram = {};
