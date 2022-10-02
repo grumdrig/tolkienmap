@@ -15,14 +15,13 @@ html, body {
 }
 h1 {
 	font-family: Middleearth;
-	float: left;
-	display: hidden;
+	position: absolute;
 }
 </style>
 <script src="triangulate.js"></script>
 </head>
 <body>
-	<h1>Central Planet</h1>
+	<h1>&nbsp;</h1>
 <canvas id="map"></canvas>
 <script>
 "use strict";
@@ -594,15 +593,14 @@ function network(x, y, w, h) {
 			coastline.isLoop = true;
 		} else if (coastline[0].y < 0.05 * H && coastline.last().y >= 0.95 * H) {
 			// There should always be one of these, that runs from the top to the bottom
-
-			createRiver(coast);
-
 			// Turn it into a loop, arount the outside of the visible map, for the sake
 			// of polygon operations
 			coastline.push({x: coastline.last().x, y: H + 100});
 			coastline.push({x: W + 100,            y: H + 100});
 			coastline.push({x: W + 100,            y:    -100});
 			coastline.push({x: coastline[0].x,     y:    -100});
+
+			createRiver(coast);
 		}
 
 		coastlines.push(coastline);
@@ -611,36 +609,83 @@ function network(x, y, w, h) {
 	voi.coastlines = coastlines;
 
 	function createRiver(coast) {
-		// Start the big river about 1/3 up from the bottom
-		for (let mouth_i = round(2 * coast.length / 3); mouth_i < coast.length; mouth_i += 1) {
-			let mouth = coast[mouth_i];
-			let banks = {};
-			let river = voi.river = [mouth];
-			function isInteriorEdge(edge_index) {
-				for (let si of voi.edges[edge_index].seeds) {
-					if (banks[si] === 2) return false;
-					let t = voi.seeds[si].terrain;
-					if (t && t !== 'beach') return false;
+		// Start the big river about 1/3 up from the bottom of the coast
+
+		let PATHFINDING_RIVER = false;
+		if (PATHFINDING_RIVER) {
+			for (let coast_i = round(2 * coast.length / 3); coast_i < coast.length; coast_i += 1) {
+				let mouth_i = coast[coast_i];
+
+				// Find the nearest node to the intended source location
+				let source_pos = vec(3 * W / 4, H / 4);
+				let source_i = 0;
+				for (let ni = source_i + 1; ni < voi.nodes.length; ++ni) {
+					if (distance(voi.nodes[source_i], source_pos) >
+						distance(voi.nodes[ni], source_pos)) {
+					  source_i = ni;
+					}
 				}
-				return true;
-			}
-			while (river.length < 100) {
-				let ef = voi.edges_from_node(river.last())
-				ef = ef.map(edge => ({edge, far: voi.far_node(edge, river.last())}));
-				ef = ef.filter(({edge, far}) => !river.includes(far));
-				ef = ef.filter(({edge, far}) => isInteriorEdge(edge));
-				if (ef.length === 0) break;
-				ef = ef.sort((a,b) => noise(voi.nodes[a.far]) - noise(voi.nodes[b.far]));
-				let next = ef.last();
-				for (let bank of voi.edges[next.edge].seeds) {
-					banks[bank] = (banks[bank] || 0) + 1;
+
+				function isInteriorEdge(edge_index) {
+					for (let si of voi.edges[edge_index].seeds) {
+						let t = voi.seeds[si].terrain;
+						if (t && t !== 'beach') return false;
+					}
+					return true;
 				}
-				river.push(next.far);
+
+				function distance3d(ni, nj) {
+					let {x,y} = subtract(voi.nodes[ni], voi.nodes[nj]);
+					let z = 100 * (noise(voi.nodes[nj]) - noise(voi.nodes[ni]));
+					return sqrt(x*x + y*y + z*z);
+				}
+
+				voi.river = voi.findPath(mouth_i, source_i,
+						ni => voi.nodes[ni].edges
+							.filter(ei => isInteriorEdge(ei))
+							.map(ei => voi.far_node(ei, ni)),
+						distance3d,
+						distance3d
+					);
+
+				if (voi.river) break;
 			}
-			// Should only take a couple tries
-			if (river.length > 20) break;
+			if (!voi.river) voi.river = []; // the null river
+
+		} else {
+
+			// Inland-climbing river
+
+			for (let coast_i = round(2 * coast.length / 3); coast_i < coast.length; coast_i += 1) {
+				let mouth_i = coast[coast_i];
+				let banks = {};
+				let river = voi.river = [mouth_i];
+				function isInteriorEdge(edge_index) {
+					for (let si of voi.edges[edge_index].seeds) {
+						if (banks[si] === 2) return false;
+						let t = voi.seeds[si].terrain;
+						if (t && t !== 'beach') return false;
+					}
+					return true;
+				}
+				while (river.length < 100) {
+					let ef = voi.edges_from_node(river.last())
+					ef = ef.map(edge => ({edge, far: voi.far_node(edge, river.last())}));
+					ef = ef.filter(({edge, far}) => !river.includes(far));
+					ef = ef.filter(({edge, far}) => isInteriorEdge(edge));
+					if (ef.length === 0) break;
+					ef = ef.sort((a,b) => noise(voi.nodes[a.far]) - noise(voi.nodes[b.far]));
+					let next = ef.last();
+					for (let bank of voi.edges[next.edge].seeds) {
+						banks[bank] = (banks[bank] || 0) + 1;
+					}
+					river.push(next.far);
+				}
+				// Should only take a couple tries
+				if (river.length > 20) break;
+			}
+			if (voi.river.length < 10) voi.river = [];
 		}
-		if (voi.river.length < 10) voi.river = [];
 	}
 
 	// Mark riverbanks
@@ -648,7 +693,6 @@ function network(x, y, w, h) {
 		let es = Object.keys(s.edges).map(e => voi.edges[e]);
 		es = es.filter(e => voi.river.includes(e.p1) && voi.river.includes(e.p2));
 		if (es.length > 0) s.terrain = 'bank';
-		console.log('bank', s);
 	}
 
 	let PARADISTS = [7, 14];

@@ -239,6 +239,10 @@ class Triangulation {
 
 	// Returns a list of node indices
 	findPath(start, goal, neighbors, dist_between, heuristic_cost_estimate) {
+		if (!neighbors) // default to all neighbors of the node
+			neighbors = ni => this.nodes[ni].edges.map(ei => this.far_node(ei, ni));
+		if (!dist_between)  // default to euclidean distance
+			dist_between = (ni, nj) => distance(this.nodes[ni], this.nodes[nj]);
 		if (!heuristic_cost_estimate)
 			heuristic_cost_estimate = (i,j) => distance(this.nodes[i], this.nodes[j]);
 		 var ClosedSet = new Set();         // The set of nodes already evaluated.
@@ -263,24 +267,24 @@ class Triangulation {
 				}
 				return total_path;
 			}
-			  ClosedSet.add(current);
-			  var ns = neighbors(current);
-			  for (let neighbor of ns) {
-					if (ClosedSet.has(neighbor))
-						 continue;      // Ignore the neighbor which is already evaluated.
-					var tentative_g_score = g_score[current] + dist_between(current, neighbor) // length of this path.
-					if (OpenSet.indexOf(neighbor) == -1)   // Discover a new node
-						 OpenSet.push(neighbor);
-					else if (tentative_g_score >= g_score[neighbor])
-						 continue;      // This is not a better path.
+			ClosedSet.add(current);
+			var ns = neighbors(current);
+			for (let neighbor of ns) {
+				if (ClosedSet.has(neighbor))
+					 continue;      // Ignore the neighbor which is already evaluated.
+				var tentative_g_score = g_score[current] + dist_between(current, neighbor) // length of this path.
+				if (OpenSet.indexOf(neighbor) == -1)   // Discover a new node
+					 OpenSet.push(neighbor);
+				else if (tentative_g_score >= g_score[neighbor])
+					 continue;      // This is not a better path.
 
-					// This path is the best until now. Record it!
-					Came_From[neighbor] = current;
-					g_score[neighbor] = tentative_g_score;
-					f_score[neighbor] = g_score[neighbor] + heuristic_cost_estimate(neighbor, goal);
-			  }
-		 }
-		 throw "findPath failed";
+				// This path is the best until now. Record it!
+				Came_From[neighbor] = current;
+				g_score[neighbor] = tentative_g_score;
+				f_score[neighbor] = g_score[neighbor] + heuristic_cost_estimate(neighbor, goal);
+			}
+		}
+		return null;
 	}
 }
 
