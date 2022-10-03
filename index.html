@@ -445,10 +445,13 @@ function network(x, y, w, h) {
 	var voi = new Triangulation(pts);
 	let labels = [];
 
-	function growPatch(core, edges) {
-		let available = voi.seeds.filter(s => !s.terrain);
-		if (available.length === 0) return;
-		var active = [pick(available).index];
+	function growPatch(core, edges, start_seed_index) {
+		if (typeof start_seed_index === 'undefined') {
+			let available = voi.seeds.filter(s => !s.terrain);
+			if (available.length === 0) return;
+			start_seed_index = pick(available).index
+		}
+		let active = [start_seed_index];
 		let patch = new Set();  // keep track of what became the terrain
 		for (var i = 0; i < 30; ++i) {
 			active.map(a => {
@@ -657,6 +660,9 @@ function network(x, y, w, h) {
 			}
 			if (!voi.river) voi.river = []; // the null river
 
+			// For some reason the find path returns a reversed order. Not sure what's going on.
+			voi.river.reverse();
+
 		} else {
 
 			// Inland-climbing river
@@ -702,8 +708,21 @@ function network(x, y, w, h) {
 
 	let PARADISTS = [7, 14];
 
-	// Trace in a mountain range
-	growPatch('mountain', 'foothill');
+	function nearest_empty_seed_to(pos) {
+		let nearest = voi.seeds
+			.filter(s => !s.terrain)
+			.reduce((a,b) =>
+				distance(a, pos) < distance(b, pos) ? a : b
+				);
+		return nearest.index;
+	}
+
+	// Trace in mountains and forests
+	let sourceseed;
+	if (voi.river.length) {
+		sourceseed = nearest_empty_seed_to(voi.nodes[voi.river.last()]);
+	}
+	growPatch('mountain', 'foothill', sourceseed);
 	growPatch('forest', 'forest');
 	growPatch('mountain', 'foothill');
 	growPatch('forest', 'forest');
