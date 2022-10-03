@@ -755,14 +755,18 @@ function network(x, y, w, h) {
 		ctx.lineWidth = 1;
 
 		// River
+
 		// Ease river
 		let river = voi.river.map(r => voi.nodes[r]);
-		river = smoothed(river, 0.5, 0);
+		river = smoothed(river, 0.65, 0);
 		river = handDrawn(river, 2);
-		ctx.lineWidth = 2;
-		ctx.beginPath();
-		ctx.doLine(river);
-		ctx.stroke();
+		for (let i = 0; i < 3; ++i) {
+			ctx.lineWidth = 0.5;
+			ctx.beginPath();
+			ctx.doLine(sloppyLine(river, 3));
+			ctx.stroke();
+		}
+		ctx.lineWidth = 1;
 
 		ctx.strokeStyle = "#fee";
 		if (SHOWALL) voi.triangles.forEach(function (t) {
