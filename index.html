@@ -609,15 +609,16 @@ function network(x, y, w, h) {
 	voi.coastlines = coastlines;
 
 	function createRiver(coast) {
-		// Start the big river about 1/3 up from the bottom of the coast
+		// Start the big river near the bottom of the coast
 
-		let PATHFINDING_RIVER = false;
+		let PATHFINDING_RIVER = true;
 		if (PATHFINDING_RIVER) {
-			for (let coast_i = round(2 * coast.length / 3); coast_i < coast.length; coast_i += 1) {
+			for (let coast_i = round(0.75 * coast.length); coast_i < coast.length; coast_i += 1) {
 				let mouth_i = coast[coast_i];
 
 				// Find the nearest node to the intended source location
-				let source_pos = vec(3 * W / 4, H / 4);
+				let source_pos = vec((crand(0.25) + 0.75) * W,
+									 (crand(0.25) + 0.25) * H);
 				let source_i = 0;
 				for (let ni = source_i + 1; ni < voi.nodes.length; ++ni) {
 					if (distance(voi.nodes[source_i], source_pos) >
@@ -636,16 +637,20 @@ function network(x, y, w, h) {
 
 				function distance3d(ni, nj) {
 					let {x,y} = subtract(voi.nodes[ni], voi.nodes[nj]);
-					let z = 100 * (noise(voi.nodes[nj]) - noise(voi.nodes[ni]));
+					let z = (W+H)/2 * (noise(voi.nodes[nj]) - noise(voi.nodes[ni]));
 					return sqrt(x*x + y*y + z*z);
+				}
+
+				function height_diff(ni, nj) {
+					return abs(noise(voi.nodes[nj]) - noise(voi.nodes[ni]));
 				}
 
 				voi.river = voi.findPath(mouth_i, source_i,
 						ni => voi.nodes[ni].edges
 							.filter(ei => isInteriorEdge(ei))
 							.map(ei => voi.far_node(ei, ni)),
-						distance3d,
-						distance3d
+						height_diff,
+						height_diff
 					);
 
 				if (voi.river) break;
