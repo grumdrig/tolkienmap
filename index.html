@@ -60,7 +60,7 @@ let SHOW_LABELS = false;
 let SHOW_COMPASS = true;
 let SHOW_NOISE = false;
 let ADD_A_RIVER = true;
-let PQASM = false;
+let PQASM = true;
 
 // Draw the mountains
 CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakiness) {
@@ -736,21 +736,59 @@ function findCoastlines(voi) {
 	}
 
 	// Mark riverbanks
-	for (let s of voi.seeds.filter(s => !s.terrain)) {
-		let es = Object.keys(s.edges).map(e => voi.edges[e]);
-		es = es.filter(e => voi.river.includes(e.p1) && voi.river.includes(e.p2));
-		if (es.length > 0) s.terrain = 'bank';
+	if (voi.river) {
+		for (let s of voi.seeds.filter(s => !s.terrain)) {
+			let es = Object.keys(s.edges).map(e => voi.edges[e]);
+			es = es.filter(e => voi.river.includes(e.p1) && voi.river.includes(e.p2));
+			if (es.length > 0) s.terrain = 'bank';
+		}
 	}
 }
 
 
-function AssignPQterrain(voi) {
-	const landsize = min(W, H) * 0.8;
-	const midpoint = { x: W/2, y: H/2 };
-	paintInOcean(voi, seed => abs(midpoint.x - seed.x) > landsize / 2 ||
-							  abs(midpoint.y - seed.x) > landsize / 2);
+function assignPQterrain(voi) {
+	const landsize = min(W * 6/8 * 0.8, H * 0.8);
+	const midpoint = { x: W/2 * 6/8, y: H/2 };
+	const six = 6;
+	const p0 = { x: midpoint.x - landsize/2, y: midpoint.y - landsize/2 };
+
+	function index(coord) {
+		if (coord.x >= 0 && coord.y >= 0 && coord.x < six && coord.y < six)
+			return coord.y * six + coord.x;
+
+		let yy = floor(six / 2);
+		if (coord.x === six + 2 && coord.y >= yy && coord.y <= yy + 1)
+			return six * six + coord.y - yy;
+
+		return -1;
+	}
+
+	function mapCoord(p) {
+		let result = { x: floor(six * (p.x - p0.x) / landsize),
+					   y: floor(six * (p.y - p0.y) / landsize) };
+		if (index(result) >= 0) return result;
+	}
+
+	function terr(coord) {
+		const map = (
+			'tundra,tundra,forest,town,foothill,mountain,' +
+			'town,forest,forest,foothill,mountain,forest,' +
+			'forest,foothill,mountain,mountain,forest,town,' +
+			'plain,mountain,town,foothill,plain,plain,' +
+			'marsh,plain,forest,forest,town,desert,' +
+			'town,marsh,plain,forest,plain,desert,' +
+			'mountain, town').split(',');
+		return map[index(coord)];
+	}
+
+	paintInOcean(voi, seed => !mapCoord(seed));
 
 	findCoastlines(voi);
+
+	voi.seeds.forEach(seed => {
+		if (!seed.terrain)// || seed.terrain == 'beach')
+			seed.terrain = terr(mapCoord(seed));
+	});
 }
 
 
@@ -796,16 +834,18 @@ function network(x, y, w, h) {
 		// River
 
 		// Ease river
-		let river = voi.river.map(r => voi.nodes[r]);
-		river = smoothed(river, 0.65, 0);
-		river = handDrawn(river, 2);
-		for (let i = 0; i < 3; ++i) {
-			ctx.lineWidth = 0.5;
-			ctx.beginPath();
-			ctx.doLine(sloppyLine(river, 3));
-			ctx.stroke();
+		if (voi.river) {
+			let river = voi.river.map(r => voi.nodes[r]);
+			river = smoothed(river, 0.65, 0);
+			river = handDrawn(river, 2);
+			for (let i = 0; i < 3; ++i) {
+				ctx.lineWidth = 0.5;
+				ctx.beginPath();
+				ctx.doLine(sloppyLine(river, 3));
+				ctx.stroke();
+			}
+			ctx.lineWidth = 1;
 		}
-		ctx.lineWidth = 1;
 
 		ctx.strokeStyle = "#fee";
 		if (SHOWALL) voi.triangles.forEach(function (t) {
