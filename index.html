@@ -409,6 +409,8 @@ CanvasRenderingContext2D.prototype.tower = function (p, R) {
 		add(p, {x:+R/2, y: +R}),
 		add(p, {x:   0, y: -R}),
 		], 2));
+	ctx.fillStyle = "white";
+	ctx.fill();
 	ctx.stroke();
 }
 
@@ -424,6 +426,8 @@ CanvasRenderingContext2D.prototype.house = function (p, R) {
 		add(p, {x:+R/2, y: +0}),
 		add(p, {x:   0, y: -R*0.5}),
 		], 2));
+	ctx.fillStyle = "white";
+	ctx.fill();
 	ctx.stroke();
 }
 
@@ -439,6 +443,8 @@ CanvasRenderingContext2D.prototype.barn = function (p, R) {
 		add(p, {x:+R*0.7, y: +0}),
 		add(p, {x:   0, y: -R*0.5}),
 		], 2));
+	ctx.fillStyle = "white";
+	ctx.fill();
 	ctx.stroke();
 }
 
@@ -928,6 +934,16 @@ function network(x, y, w, h) {
 			ctx.stroke();
 		});
 		ctx.strokeStyle = "#000";
+
+		// Roads in town
+		voi.edges.forEach(function (e) {
+			ctx.beginPath();
+			if (e.seeds.filter(s => voi.seeds[s].terrain === 'town').length === 2) {
+				if (Math.random() < 0.75)
+					ctx.doSpline(handDrawnLine(voi.nodes[e.p1], voi.nodes[e.p2], 3));
+			}
+			ctx.stroke();
+		});
 
 		let features = [];
 		let DENSE_FOREST = true;
