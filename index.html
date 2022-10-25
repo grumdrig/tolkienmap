@@ -60,6 +60,7 @@ let SHOW_LABELS = false;
 let SHOW_COMPASS = true;
 let SHOW_NOISE = false;
 let ADD_A_RIVER = true;
+let PQASM = false;
 
 // Draw the mountains
 CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakiness) {
@@ -441,54 +442,6 @@ function pointOnSegment(p, s, t) {
 function assignTerrainTolkienStyle(voi) {
 	voi.labels = [];
 
-	function growPatch(core, edges, start_seed_index) {
-		if (typeof start_seed_index === 'undefined') {
-			let available = voi.seeds.filter(s => !s.terrain);
-			if (available.length === 0) return;
-			start_seed_index = pick(available).index
-		}
-		let active = [start_seed_index];
-		let patch = new Set();  // keep track of what became the terrain
-		for (var i = 0; i < 30; ++i) {
-			active.map(a => {
-				voi.seeds[a].terrain = core;
-				patch.add(a);
-			});
-			var ns = active.reduce((p, c) => p.concat(voi.seeds[c].neighbors), []);
-			ns = Array.from(new Set(ns)).filter(n => !voi.seeds[n].terrain);
-			if (ns.length == 0) break;
-			active = [pick(ns)];
-			for (var k = 0; k < 1; ++k) {
-				var eligible = ns.filter(n => !active.has(n) && voi.seeds[active[0]].neighbors.has(n));
-				if (eligible.length == 0) break;
-				active.push(pick(eligible));
-			}
-			ns.forEach(n => {
-				voi.seeds[n].terrain = edges;
-				patch.add(n);
-			});
-		}
-		patch = Array.from(patch).map(n => voi.seeds[n])
-		let mean = patch.reduce((sum,p) => ({ x: sum.x + p.x, y: sum.y + p.y }), {x:0, y:0});
-		mean.x /= patch.length;
-		mean.y /= patch.length;
-		let slope = patch.map(({x,y}) => (x - mean.x) * (y - mean.y)).reduce((a,b) => a+b) /
-								patch.map(({x,y}) => (x - mean.x) * (x - mean.x)).reduce((a,b) => a+b);
-		let name = elfName().toUpperCase();
-		if (core === 'forest') {
-			name = name + 'WOOD';
-		} else if (core === 'mountain') {
-			name = 'ERED ' + name;
-		} else {
-			name = name + ' ' + core;
-		}
-		voi.labels.push({
-			name,
-			x: mean.x,
-			y: mean.y,
-			slope });
-		return patch;
-	}
 
 	// Reserve room for the compass rose
 	if (SHOW_COMPASS) voi.seeds.forEach(p => {
@@ -496,10 +449,11 @@ function assignTerrainTolkienStyle(voi) {
 			p.terrain = 'compass';
 	});
 
-	let noise = voi.noise = Noise(20);
 
-	// Designate ocean based on terrain heightmap but also keep a porttion of the west edge
-	// ocean
+	// Designate ocean based on terrain heightmap but also keep a porttion of
+	// the west edge ocean
+
+	let noise = voi.noise = Noise(20);
 
 	// Figure out where the threshold should be
 	let remaining = 0.25;  // target this proportion of map to be ocean
@@ -512,13 +466,93 @@ function assignTerrainTolkienStyle(voi) {
 			remaining -= noise.histogram[b];
 		}
 	}
-	voi.seeds.filter(s => !s.terrain && (s.x < W/15 || noise(s) < threshold))
-		.forEach(s => s.terrain = 'deeps');
+	paintInOcean(voi,
+		seed => !seed.terrain && (seed.x < W/15 || noise(seed) < threshold));
+
+
+	findCoastlines(voi);
+
+
+	// Trace in mountains and forests
+	let sourceseed;
+	if (voi.river.length) {
+		sourceseed = nearest_empty_seed_to(voi, voi.nodes[voi.river.last()]);
+	}
+	growPatch(voi, 'mountain', 'foothill', sourceseed);
+	growPatch(voi, 'forest', 'forest');
+	growPatch(voi, 'mountain', 'foothill');
+	growPatch(voi, 'forest', 'forest');
+}
+
+
+function nearest_empty_seed_to(voi, pos) {
+	let nearest = voi.seeds
+		.filter(s => !s.terrain)
+		.reduce((a,b) =>
+			distance(a, pos) < distance(b, pos) ? a : b
+			);
+	return nearest.index;
+}
+
+
+
+function growPatch(voi, core, edges, start_seed_index) {
+	if (typeof start_seed_index === 'undefined') {
+		let available = voi.seeds.filter(s => !s.terrain);
+		if (available.length === 0) return;
+		start_seed_index = pick(available).index
+	}
+	let active = [start_seed_index];
+	let patch = new Set();  // keep track of what became the terrain
+	for (var i = 0; i < 30; ++i) {
+		active.map(a => {
+			voi.seeds[a].terrain = core;
+			patch.add(a);
+		});
+		var ns = active.reduce((p, c) => p.concat(voi.seeds[c].neighbors), []);
+		ns = Array.from(new Set(ns)).filter(n => !voi.seeds[n].terrain);
+		if (ns.length == 0) break;
+		active = [pick(ns)];
+		for (var k = 0; k < 1; ++k) {
+			var eligible = ns.filter(n => !active.has(n) && voi.seeds[active[0]].neighbors.has(n));
+			if (eligible.length == 0) break;
+			active.push(pick(eligible));
+		}
+		ns.forEach(n => {
+			voi.seeds[n].terrain = edges;
+			patch.add(n);
+		});
+	}
+	patch = Array.from(patch).map(n => voi.seeds[n])
+	let mean = patch.reduce((sum,p) => ({ x: sum.x + p.x, y: sum.y + p.y }), {x:0, y:0});
+	mean.x /= patch.length;
+	mean.y /= patch.length;
+	let slope = patch.map(({x,y}) => (x - mean.x) * (y - mean.y)).reduce((a,b) => a+b) /
+							patch.map(({x,y}) => (x - mean.x) * (x - mean.x)).reduce((a,b) => a+b);
+	let name = elfName().toUpperCase();
+	if (core === 'forest') {
+		name = name + 'WOOD';
+	} else if (core === 'mountain') {
+		name = 'ERED ' + name;
+	} else {
+		name = name + ' ' + core;
+	}
+	voi.labels.push({
+		name,
+		x: mean.x,
+		y: mean.y,
+		slope });
+	return patch;
+}
+
+function paintInOcean(voi, critereon) {
+	voi.seeds.filter(seed => critereon(seed))
+		.forEach(seed => seed.terrain = 'deeps');
 
 	// Edge of water is shallows
-	voi.seeds.filter(s => s.terrain === 'deeps')
-		.filter(s => s.neighbors.map(n => voi.seeds[n]).filter(n => n.terrain !== 'deeps').length > 0)
-		.forEach(s => s.terrain = 'shallows');
+	voi.seeds.filter(seed => seed.terrain === 'deeps')
+		.filter(seed => seed.neighbors.map(n => voi.seeds[n]).filter(n => n.terrain !== 'deeps').length > 0)
+		.forEach(seed => seed.terrain = 'shallows');
 
 	// Edge of land is beach
 	let coastedges = voi.coastedges = new Set();
@@ -537,32 +571,7 @@ function assignTerrainTolkienStyle(voi) {
 				coastedges.add(ne);
 		}
 	});
-
-	findCoastlines(voi);
-
-
-	function nearest_empty_seed_to(pos) {
-		let nearest = voi.seeds
-			.filter(s => !s.terrain)
-			.reduce((a,b) =>
-				distance(a, pos) < distance(b, pos) ? a : b
-				);
-		return nearest.index;
-	}
-
-	// Trace in mountains and forests
-	let sourceseed;
-	if (voi.river.length) {
-		sourceseed = nearest_empty_seed_to(voi.nodes[voi.river.last()]);
-	}
-	growPatch('mountain', 'foothill', sourceseed);
-	growPatch('forest', 'forest');
-	growPatch('mountain', 'foothill');
-	growPatch('forest', 'forest');
-
-
 }
-
 
 function findCoastlines(voi) {
 	// Find coastlines
@@ -735,13 +744,27 @@ function findCoastlines(voi) {
 }
 
 
+function AssignPQterrain(voi) {
+	const landsize = min(W, H) * 0.8;
+	const midpoint = { x: W/2, y: H/2 };
+	paintInOcean(voi, seed => abs(midpoint.x - seed.x) > landsize / 2 ||
+							  abs(midpoint.y - seed.x) > landsize / 2);
+
+	findCoastlines(voi);
+}
+
+
 function network(x, y, w, h) {
 	var R = 20;
 	var N = w * h / (R * R * PI/2);
 	var pts = quasiRandomPointCloud(N, x, y, w, h);
 	var voi = new Triangulation(pts);
 
-	assignTerrainTolkienStyle(voi);
+	if (PQASM) {
+		assignPQterrain(voi);
+	} else {
+		assignTerrainTolkienStyle(voi);
+	}
 
 	voi.draw = (ctx) => {
 
