@@ -852,6 +852,10 @@ function assignPqasmTerrain(voi) {
 		if (index(result) >= 0) return result;
 	}
 
+	function mapPoint(coord) {
+		return add(p0, scale(add(coord, {x:0.5,y:0.5}), landsize/six));
+	}
+
 	function terr(coord) {
 		const map = (
 			'tundra,tundra,forest,town,foothill,mountain,' +
@@ -872,6 +876,35 @@ function assignPqasmTerrain(voi) {
 		if (!seed.terrain)// || seed.terrain == 'beach')
 			seed.terrain = terr(mapCoord(seed));
 	});
+
+	const TOWNS = [{
+			name: 'Yar',
+			p: vec(0, 1),
+		}, {
+			name: 'Pillary',
+			p: vec(2, 3),
+		}, {
+			name: 'Hohamp',
+			p: vec(3, 0),
+		}, {
+			name: 'Bompton',
+			p: vec(5, 2),
+		}, {
+			name: 'Cholar',
+			p: vec(0, 5),
+		}, {
+			name: 'Delial',
+			p: vec(4, 4),
+		}];
+	voi.labels = TOWNS.map(town => {
+		let p = mapPoint(town.p);
+		return {
+			name: town.name,
+			x: p.x,
+			y: p.y,
+			slope: 0 };
+	});
+
 }
 
 
