@@ -398,6 +398,14 @@ CanvasRenderingContext2D.prototype.tuft = function (p, R) {
 	ctx.stroke();
 }
 
+CanvasRenderingContext2D.prototype.snowline = function (p, R) {
+	let ctx = this;
+	const wig = 2;
+	ctx.beginPath();
+	ctx.doSpline(handDrawnLine({x: p.x - R, y: p.y}, {x: p.x + R, y: p.y}, wig));
+	ctx.stroke();
+}
+
 
 CanvasRenderingContext2D.prototype.tower = function (p, R) {
 	let ctx = this;
@@ -813,7 +821,7 @@ function findCoastlines(voi) {
 }
 
 
-function assignPQterrain(voi) {
+function assignPqasmTerrain(voi) {
 	const landsize = min(W * 6/8 * 0.8, H * 0.8);
 	const midpoint = { x: W/2 * 6/8, y: H/2 };
 	const six = 6;
@@ -844,7 +852,7 @@ function assignPQterrain(voi) {
 			'plain,mountain,town,foothill,plain,plain,' +
 			'marsh,plain,forest,forest,town,desert,' +
 			'town,marsh,plain,forest,plain,desert,' +
-			'mountain, town').split(',');
+			'mountain,town').split(',');
 		return map[index(coord)];
 	}
 
@@ -866,7 +874,7 @@ function network(x, y, w, h) {
 	var voi = new Triangulation(pts);
 
 	if (PQASM) {
-		assignPQterrain(voi);
+		assignPqasmTerrain(voi);
 	} else {
 		assignTerrainTolkienStyle(voi);
 	}
@@ -972,6 +980,9 @@ function network(x, y, w, h) {
 			} else if (p.terrain == 'marsh') {
 				let TUFT_SIZE = 4;
 				features.push({y:p.y, draw: _ => ctx.tuft(p, TUFT_SIZE)});
+			} else if (p.terrain == 'tundra') {
+				let TUFT_SIZE = 4;
+				features.push({y:p.y, draw: _ => ctx.snowline(p, 8)});
 			} else if (p.terrain == 'town') {
 				let TOWN_SIZE = 8;
 				features.push({y:p.y, draw: _ => Math.random() < 0.75 ?
