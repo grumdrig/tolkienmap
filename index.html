@@ -374,6 +374,7 @@ CanvasRenderingContext2D.prototype.tree = function (p, R) {
 	ctx.stroke();
 }
 
+/* not used it seems
 CanvasRenderingContext2D.prototype.forest = function (x, y, w, h) {
 	var ctx = this;
 	var R = 10;
@@ -381,6 +382,22 @@ CanvasRenderingContext2D.prototype.forest = function (x, y, w, h) {
 	pts = pts.sort(function (a,b) { return a.y - b.y });
 	pts.forEach(p => ctx.tree(p, R));
 }
+*/
+
+CanvasRenderingContext2D.prototype.tuft = function (p, R) {
+	let ctx = this;
+	const wig = 2;
+	ctx.beginPath();
+	ctx.doSpline(handDrawnLine(p, add(p, {x:0, y:-R*1.65}), wig));
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.doSpline(handDrawnLine(add(p, {x: +R/2, y: 0}), add(p, {x:R, y:-R*.75}), wig));
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.doSpline(handDrawnLine(add(p, {x: -R/2, y: 0}), add(p, {x:-R, y:-R*.75}), wig));
+	ctx.stroke();
+}
+
 
 function dump(label, arr) {
 	for (var i = 0; i < arr.length; ++i) console.log(label, i, arr[i]);
@@ -872,11 +889,11 @@ function network(x, y, w, h) {
 		let DENSE_FOREST = true;
 		let TREE_SIZE = DENSE_FOREST ? 8 : 10;
 		voi.seeds.forEach(p => {
-			if (p.terrain == 'mountain')
+			if (p.terrain == 'mountain') {
 				features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-10}, 40, 20, true, 0.5)});
-			else if (p.terrain == 'foothill')
+			} else if (p.terrain == 'foothill') {
 				features.push({y:p.y, draw: _ => ctx.mountain({x:p.x, y:p.y-5}, 40, 10, true, 0.2)});
-			else if (p.terrain == 'forest') {
+			} else if (p.terrain == 'forest') {
 				features.push({y:p.y, draw: _ => ctx.tree(p, TREE_SIZE)});
 				p.neighbors.forEach(nn => {
 					let n = voi.seeds[nn];
@@ -890,6 +907,18 @@ function network(x, y, w, h) {
 								q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
 						}
 						if (q) features.push({y:q.y, draw: _ => ctx.tree(q, TREE_SIZE)});
+					}
+				});
+			} else if (p.terrain == 'marsh') {
+				let TUFT_SIZE = 4;
+				features.push({y:p.y, draw: _ => ctx.tuft(p, TUFT_SIZE)});
+				p.neighbors.forEach(nn => {
+					let n = voi.seeds[nn];
+					if (n.terrain == p.terrain) {
+						if (false && n.x > p.x && Math.random() < 0.125) {
+							let q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
+							if (q) features.push({y:q.y, draw: _ => ctx.tuft(q, TUFT_SIZE)});
+						}
 					}
 				});
 			}
