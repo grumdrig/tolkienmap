@@ -399,6 +399,50 @@ CanvasRenderingContext2D.prototype.tuft = function (p, R) {
 }
 
 
+CanvasRenderingContext2D.prototype.tower = function (p, R) {
+	let ctx = this;
+	const wig = 2;
+	ctx.beginPath();
+	ctx.doLine(handDrawn([
+		add(p, {x:   0, y: -R}),
+		add(p, {x:-R/2, y: +R}),
+		add(p, {x:+R/2, y: +R}),
+		add(p, {x:   0, y: -R}),
+		], 2));
+	ctx.stroke();
+}
+
+CanvasRenderingContext2D.prototype.house = function (p, R) {
+	let ctx = this;
+	const wig = 2;
+	ctx.beginPath();
+	ctx.doLine(handDrawn([
+		add(p, {x:   0, y: -R*0.5}),
+		add(p, {x:-R/2, y: +0}),
+		add(p, {x:-R/2, y: +R*0.5}),
+		add(p, {x:+R/2, y: +R*0.5}),
+		add(p, {x:+R/2, y: +0}),
+		add(p, {x:   0, y: -R*0.5}),
+		], 2));
+	ctx.stroke();
+}
+
+CanvasRenderingContext2D.prototype.barn = function (p, R) {
+	let ctx = this;
+	const wig = 2;
+	ctx.beginPath();
+	ctx.doLine(handDrawn([
+		add(p, {x:   0, y: -R*0.5}),
+		add(p, {x:-R*0.7, y: +0}),
+		add(p, {x:-R*0.7, y: +R*0.5}),
+		add(p, {x:+R*0.7, y: +R*0.5}),
+		add(p, {x:+R*0.7, y: +0}),
+		add(p, {x:   0, y: -R*0.5}),
+		], 2));
+	ctx.stroke();
+}
+
+
 function dump(label, arr) {
 	for (var i = 0; i < arr.length; ++i) console.log(label, i, arr[i]);
 }
@@ -898,7 +942,7 @@ function network(x, y, w, h) {
 				p.neighbors.forEach(nn => {
 					let n = voi.seeds[nn];
 					var q;
-					if (n.terrain == 'forest') {
+					if (n.terrain == p.terrain) {
 						if (DENSE_FOREST) {
 							if (Math.random() < 0.5)
 								q = {x: (2 * p.x + n.x) / 3, y: (2 * p.y + n.y) / 3};
@@ -912,15 +956,12 @@ function network(x, y, w, h) {
 			} else if (p.terrain == 'marsh') {
 				let TUFT_SIZE = 4;
 				features.push({y:p.y, draw: _ => ctx.tuft(p, TUFT_SIZE)});
-				p.neighbors.forEach(nn => {
-					let n = voi.seeds[nn];
-					if (n.terrain == p.terrain) {
-						if (false && n.x > p.x && Math.random() < 0.125) {
-							let q = {x: (p.x + n.x) / 2, y: (p.y + n.y) / 2};
-							if (q) features.push({y:q.y, draw: _ => ctx.tuft(q, TUFT_SIZE)});
-						}
-					}
-				});
+			} else if (p.terrain == 'town') {
+				let TOWN_SIZE = 8;
+				features.push({y:p.y, draw: _ => Math.random() < 0.75 ?
+					ctx.house(p, TOWN_SIZE) : Math.random() < 0.5 ?
+					ctx.tower(p, TOWN_SIZE) :
+					ctx.barn(p, TOWN_SIZE)});
 			}
 		});
 		features = features.sort((a,b) => a.y - b.y);
