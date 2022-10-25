@@ -406,6 +406,14 @@ CanvasRenderingContext2D.prototype.snowline = function (p, R) {
 	ctx.stroke();
 }
 
+CanvasRenderingContext2D.prototype.grainOfSand = function (p, R) {
+	let ctx = this;
+	const wig = 2;
+	ctx.beginPath();
+	ctx.doSpline(handDrawnLine(p, add(p, {x: crand(R), y: crand(R)}), wig));
+	ctx.stroke();
+}
+
 
 CanvasRenderingContext2D.prototype.tower = function (p, R) {
 	let ctx = this;
@@ -981,8 +989,9 @@ function network(x, y, w, h) {
 				let TUFT_SIZE = 4;
 				features.push({y:p.y, draw: _ => ctx.tuft(p, TUFT_SIZE)});
 			} else if (p.terrain == 'tundra') {
-				let TUFT_SIZE = 4;
 				features.push({y:p.y, draw: _ => ctx.snowline(p, 8)});
+			} else if (p.terrain == 'desert') {
+				features.push({y:p.y, draw: _ => ctx.grainOfSand(p, 4)});
 			} else if (p.terrain == 'town') {
 				let TOWN_SIZE = 8;
 				features.push({y:p.y, draw: _ => Math.random() < 0.75 ?
