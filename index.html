@@ -60,7 +60,7 @@ let SHOW_LABELS = false;
 let SHOW_COMPASS = true;
 let SHOW_NOISE = false;
 let ADD_A_RIVER = true;
-let PQASM = true;
+let PQASM = false;
 
 // Draw the mountains
 CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakiness) {
@@ -1277,6 +1277,9 @@ window.addEventListener("keypress", ({key}) => {
 		SHOW_COMPASS = !SHOW_COMPASS;
 	} else if (key === 'h') {
 		SHOW_NOISE = !SHOW_NOISE;
+	} else if (key === 'p') {
+		PQASM = !PQASM;
+		map = network(0, 0, W, H);
 	} else {
 		console.log('KEY', key);
 	}
