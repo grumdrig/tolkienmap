@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // General purpose tool to use a list of names from stdin, each on their own
 // line, to generate a name generator.
 
@@ -33,29 +34,28 @@ for (let name of data) {
 		step(cpat, 'Cck');
 	}
 	patterns[pattern] = (patterns[pattern] || 0) + 1;
-	console.log(pattern);
 }
 
-function burnin(preamble, set) {
+function burnin(preamble, set, punc) {
 	console.log(`\t${preamble} [`);
 	let total = 0;
 	for (let v in set) total += set[v];
 	for (let v in set) {
 		console.log(`\t\t[${(set[v] / total).toFixed(5)}, '${v}'],`);
 	}
-	console.log("\t\t];");
+	console.log("\t\t]" + punc);
 }
 
 console.log('function generateName() {');
 console.log('\tconst frequencies = {');
 for (let set in frequencies)
-	burnin(`${set}:`, frequencies[set]);
+	burnin(`${set}:`, frequencies[set], ',');
 console.log('\t}');
-burnin('const patterns =', patterns);
+burnin('const patterns =', patterns, ';');
 
 console.log(`
 	function pickp(a) {
-		let r = rand();
+		let r = Math.random();
 		for (let [frequency, value] of a) {
 			r -= frequency;
 			if (r <= 0) return value;

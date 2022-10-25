@@ -59,6 +59,7 @@ let REVEAL_MARGINS = false;
 let SHOW_LABELS = false;
 let SHOW_COMPASS = true;
 let SHOW_NOISE = false;
+let ADD_A_RIVER = true;
 
 // Draw the mountains
 CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakiness) {
@@ -437,13 +438,8 @@ function pointOnSegment(p, s, t) {
 				 min(s.y, t.y) <= p.y && p.y <= max(s.y, t.y);
 }
 
-
-function network(x, y, w, h) {
-	var R = 20;
-	var N = w * h / (R * R * PI/2);
-	var pts = quasiRandomPointCloud(N, x, y, w, h);
-	var voi = new Triangulation(pts);
-	let labels = [];
+function assignTerrainTolkienStyle(voi) {
+	voi.labels = [];
 
 	function growPatch(core, edges, start_seed_index) {
 		if (typeof start_seed_index === 'undefined') {
@@ -486,7 +482,7 @@ function network(x, y, w, h) {
 		} else {
 			name = name + ' ' + core;
 		}
-		labels.push({
+		voi.labels.push({
 			name,
 			x: mean.x,
 			y: mean.y,
@@ -500,7 +496,7 @@ function network(x, y, w, h) {
 			p.terrain = 'compass';
 	});
 
-	let noise = Noise(20);
+	let noise = voi.noise = Noise(20);
 
 	// Designate ocean based on terrain heightmap but also keep a porttion of the west edge
 	// ocean
@@ -525,7 +521,7 @@ function network(x, y, w, h) {
 		.forEach(s => s.terrain = 'shallows');
 
 	// Edge of land is beach
-	let coastedges = new Set();
+	let coastedges = voi.coastedges = new Set();
 	voi.seeds.filter(s => s.terrain === 'shallows').forEach(s => {
 		for (let ne in s.edges) {
 			let e = voi.edges[ne], p1 = voi.nodes[e.p1], p2 = voi.nodes[e.p2];
@@ -542,8 +538,37 @@ function network(x, y, w, h) {
 		}
 	});
 
+	findCoastlines(voi);
+
+
+	function nearest_empty_seed_to(pos) {
+		let nearest = voi.seeds
+			.filter(s => !s.terrain)
+			.reduce((a,b) =>
+				distance(a, pos) < distance(b, pos) ? a : b
+				);
+		return nearest.index;
+	}
+
+	// Trace in mountains and forests
+	let sourceseed;
+	if (voi.river.length) {
+		sourceseed = nearest_empty_seed_to(voi.nodes[voi.river.last()]);
+	}
+	growPatch('mountain', 'foothill', sourceseed);
+	growPatch('forest', 'forest');
+	growPatch('mountain', 'foothill');
+	growPatch('forest', 'forest');
+
+
+}
+
+
+function findCoastlines(voi) {
 	// Find coastlines
-	let coastlines = [];
+	let coastedges = voi.coastedges;
+	let noise = voi.noise;
+	let coastlines = voi.coastlines = [];
 	while (coastedges.size > 0) {
 		var ne; for (ne of coastedges) { coastedges.delete(ne); break; }  // pop
 		let e = voi.edges[ne];
@@ -586,7 +611,7 @@ function network(x, y, w, h) {
 		// Minimize how far afield the points go. This is a terrible hack around
 		// some drawing issues.
 		coastline = coastline.map(({x,y}) => ({x: max(-50, min(W + 50, x)),
-																					 y: max(-50, min(H + 50, y))}));
+											   y: max(-50, min(H + 50, y))}));
 
 		coastline = handDrawn(coastline, COAST_ECCENTRICIY);
 
@@ -612,6 +637,8 @@ function network(x, y, w, h) {
 	voi.coastlines = coastlines;
 
 	function createRiver(coast) {
+		if (!ADD_A_RIVER) return;
+
 		// Start the big river near the bottom of the coast
 
 		let PATHFINDING_RIVER = true;
@@ -705,28 +732,16 @@ function network(x, y, w, h) {
 		es = es.filter(e => voi.river.includes(e.p1) && voi.river.includes(e.p2));
 		if (es.length > 0) s.terrain = 'bank';
 	}
+}
 
-	let PARADISTS = [7, 14];
 
-	function nearest_empty_seed_to(pos) {
-		let nearest = voi.seeds
-			.filter(s => !s.terrain)
-			.reduce((a,b) =>
-				distance(a, pos) < distance(b, pos) ? a : b
-				);
-		return nearest.index;
-	}
+function network(x, y, w, h) {
+	var R = 20;
+	var N = w * h / (R * R * PI/2);
+	var pts = quasiRandomPointCloud(N, x, y, w, h);
+	var voi = new Triangulation(pts);
 
-	// Trace in mountains and forests
-	let sourceseed;
-	if (voi.river.length) {
-		sourceseed = nearest_empty_seed_to(voi.nodes[voi.river.last()]);
-	}
-	growPatch('mountain', 'foothill', sourceseed);
-	growPatch('forest', 'forest');
-	growPatch('mountain', 'foothill');
-	growPatch('forest', 'forest');
-
+	assignTerrainTolkienStyle(voi);
 
 	voi.draw = (ctx) => {
 
@@ -734,7 +749,7 @@ function network(x, y, w, h) {
 
 		// Coastlines
 		ctx.lineWidth = 1.25;
-		coastlines.forEach(coast => {
+		voi.coastlines.forEach(coast => {
 			ctx.beginPath();
 			ctx.doLine(coast);
 			ctx.strokeStyle = "#000";
@@ -742,8 +757,9 @@ function network(x, y, w, h) {
 		});
 
 		// Coastline parallels
+		let PARADISTS = [7, 14];
 		ctx.lineWidth = 0.6;
-		let parallels = findParallels(coastlines, PARADISTS);
+		let parallels = findParallels(voi.coastlines, PARADISTS);
 
 		parallels = parallels.map(ps => ps.map(p => sloppyLine(p, COAST_ECCENTRICIY / 2)));
 
@@ -862,7 +878,7 @@ function network(x, y, w, h) {
 			ctx.font = '18px Middleearth';
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
-			for (let label of labels) {
+			for (let label of voi.labels) {
 				ctx.save();
 				ctx.translate(label.x, label.y);
 				ctx.rotate(Math.atan2(label.slope, 1));
