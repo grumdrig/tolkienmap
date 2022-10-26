@@ -60,7 +60,7 @@ let SHOW_LABELS = false;
 let SHOW_COMPASS = true;
 let SHOW_NOISE = false;
 let ADD_A_RIVER = true;
-let PQASM = false;
+let PQASM = true;
 
 // Draw the mountains
 CanvasRenderingContext2D.prototype.fieldOfMountains = function (DW, DH, peakiness) {
@@ -279,6 +279,7 @@ CanvasRenderingContext2D.prototype.plotPoint = function (p) {
 	this.fillRect(p.x, p.y, 4, 4);
 }
 
+
 function minDistance(p, pts) {
 	var result = Number.POSITIVE_INFINITY;
 	for (var i = 0; i < pts.length; ++i) {
@@ -398,7 +399,8 @@ CanvasRenderingContext2D.prototype.tuft = function (p, R) {
 	ctx.stroke();
 }
 
-CanvasRenderingContext2D.prototype.snowline = function (p, R) {
+CanvasRenderingContext2D.prototype.snowline = function (p) {
+	let R = 15;
 	let ctx = this;
 	const wig = 2;
 	ctx.beginPath();
@@ -406,12 +408,40 @@ CanvasRenderingContext2D.prototype.snowline = function (p, R) {
 	ctx.stroke();
 }
 
-CanvasRenderingContext2D.prototype.grainOfSand = function (p, R) {
+CanvasRenderingContext2D.prototype.grainOfSand = function (p) {
 	let ctx = this;
 	const wig = 2;
 	ctx.beginPath();
-	ctx.doSpline(handDrawnLine(p, add(p, {x: crand(R), y: crand(R)}), wig));
+	// let R = 4
+	// ctx.doSpline(handDrawnLine(p, add(p, {x: crand(R), y: crand(R)}), wig));
+	let R = 20;
+	let hump = [
+		vec(-R*1.2,      0    ),
+		vec(-R,      0    ),
+		vec(-R*0.5, -R*0.1),
+		vec(-R*0.2,      -R*0.3),
+		vec( R*0.2,      -R*0.3),
+		vec( R*0.5, -R*0.1),
+		vec( R    ,  0    ),
+		vec( R*1.2,  0    )];
+	let dune = hump.map(h => add(p, h));
+	dune = sloppyLine(dune, 3);
+	ctx.doSpline(dune, 0);
+	ctx.fillSyle = 'white';
+	ctx.fill();
 	ctx.stroke();
+
+	/*
+	ctx.beginPath();
+	let curve = [
+		vec(-R*0.7,       R*0.4   ),
+		vec(-R*0.3,   	  R*0.25    ),
+		vec(-R*0.25,     -R*0.05),
+		vec(-R*0.2*0.3,  -R*0.3)
+		];
+	ctx.doSpline(sloppyLine(curve.map(h => add(p, h)), 0));
+	ctx.stroke();
+	*/
 }
 
 
@@ -846,14 +876,20 @@ function assignPqasmTerrain(voi) {
 		return -1;
 	}
 
+	const LEAN = 2/16;
+
 	function mapCoord(p) {
+		p = vec(p.x, p.y);
+		p.x -= (midpoint.y - p.y) * LEAN;
 		let result = { x: floor(six * (p.x - p0.x) / landsize),
 					   y: floor(six * (p.y - p0.y) / landsize) };
 		if (index(result) >= 0) return result;
 	}
 
 	function mapPoint(coord) {
-		return add(p0, scale(add(coord, {x:0.5,y:0.5}), landsize/six));
+		let p = add(p0, scale(add(coord, {x:0.5,y:0.5}), landsize/six));
+		p.x += (midpoint.y - p.y) * LEAN;
+		return p;
 	}
 
 	function terr(coord) {
@@ -1022,9 +1058,9 @@ function network(x, y, w, h) {
 				let TUFT_SIZE = 4;
 				features.push({y:p.y, draw: _ => ctx.tuft(p, TUFT_SIZE)});
 			} else if (p.terrain == 'tundra') {
-				features.push({y:p.y, draw: _ => ctx.snowline(p, 8)});
+				features.push({y:p.y, draw: _ => ctx.snowline(p)});
 			} else if (p.terrain == 'desert') {
-				features.push({y:p.y, draw: _ => ctx.grainOfSand(p, 4)});
+				features.push({y:p.y, draw: _ => ctx.grainOfSand(p)});
 			} else if (p.terrain == 'town') {
 				let TOWN_SIZE = 8;
 				features.push({y:p.y, draw: _ => Math.random() < 0.75 ?
