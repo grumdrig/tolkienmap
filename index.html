@@ -412,8 +412,6 @@ CanvasRenderingContext2D.prototype.grainOfSand = function (p) {
 	let ctx = this;
 	const wig = 2;
 	ctx.beginPath();
-	// let R = 4
-	// ctx.doSpline(handDrawnLine(p, add(p, {x: crand(R), y: crand(R)}), wig));
 	let R = 20;
 	let hump = [
 		vec(-R*1.2,      0    ),
@@ -430,18 +428,6 @@ CanvasRenderingContext2D.prototype.grainOfSand = function (p) {
 	ctx.fillSyle = 'white';
 	ctx.fill();
 	ctx.stroke();
-
-	/*
-	ctx.beginPath();
-	let curve = [
-		vec(-R*0.7,       R*0.4   ),
-		vec(-R*0.3,   	  R*0.25    ),
-		vec(-R*0.25,     -R*0.05),
-		vec(-R*0.2*0.3,  -R*0.3)
-		];
-	ctx.doSpline(sloppyLine(curve.map(h => add(p, h)), 0));
-	ctx.stroke();
-	*/
 }
 
 
