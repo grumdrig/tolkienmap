@@ -1,6 +1,10 @@
 Generate and draw Tolkien-style Maps
 ====================================
 
+## Demo
+
+http://github.grumdrig.com/tolkienmap/
+
 ## Guiding Design Principles:
 
 1. Ocean at the West side. Tolkien.
